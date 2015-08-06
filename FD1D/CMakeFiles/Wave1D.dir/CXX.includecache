@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/BradleyLNL/mpi-projects/FD1D/fd1d_wave.cpp
+iostream
+-
+vector
+-
+string
+-
+fstream
+-
+mpi.h
+-
+

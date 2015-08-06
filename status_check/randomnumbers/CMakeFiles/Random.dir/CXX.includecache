@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/BradleyLNL/mpi-projects/status_check/randomnumbers/Random.cpp
+Random.h
+/Users/BradleyLNL/mpi-projects/status_check/randomnumbers/Random.h
+iostream
+-
+
+/Users/BradleyLNL/mpi-projects/status_check/randomnumbers/Random.h
+random
+-
+stdint.h
+-
+vector
+-
+

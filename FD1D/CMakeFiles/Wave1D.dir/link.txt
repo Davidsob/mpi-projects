@@ -1,0 +1,1 @@
+/scr_davidson/davidson/contrib/mpich/bin/mpic++   -Wall -fPIC -pipe -std=c++11 -stdlib=libc++ -Wl,-search_paths_first -Wl,-headerpad_max_install_names   CMakeFiles/Wave1D.dir/fd1d_wave.cpp.o  -o Wave1D  

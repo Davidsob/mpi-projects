@@ -1,0 +1,2 @@
+/usr/bin/ar cr libRandom.a  CMakeFiles/Random.dir/Random.cpp.o
+/usr/bin/ranlib libRandom.a

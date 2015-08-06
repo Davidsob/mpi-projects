@@ -1,0 +1,2 @@
+/Users/BradleyLNL/mpi-projects/status_check/CMakeFiles/CheckStatus.dir
+/Users/BradleyLNL/mpi-projects/status_check/randomnumbers/CMakeFiles/Random.dir
