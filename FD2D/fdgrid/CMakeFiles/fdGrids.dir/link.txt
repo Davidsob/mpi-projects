@@ -1,0 +1,2 @@
+/opt/local/bin/ar cr libfdGrids.a  CMakeFiles/fdGrids.dir/communicatorMap.cpp.o CMakeFiles/fdGrids.dir/LocalGrid.cpp.o
+/opt/local/bin/ranlib libfdGrids.a
