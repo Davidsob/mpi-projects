@@ -17,7 +17,6 @@ using namespace FDUtils;
 
 namespace FDGrid
 {
-
   class CommunicatorMap
   {
   public:

@@ -30,22 +30,22 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = "/Applications/CMake 2.8-12.app/Contents/bin/cmake"
+CMAKE_COMMAND = /opt/local/bin/cmake
 
 # The command to remove a file.
-RM = "/Applications/CMake 2.8-12.app/Contents/bin/cmake" -E remove -f
+RM = /opt/local/bin/cmake -E remove -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The program to use to edit the cache.
-CMAKE_EDIT_COMMAND = "/Applications/CMake 2.8-12.app/Contents/bin/ccmake"
+CMAKE_EDIT_COMMAND = /opt/local/bin/ccmake
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/BradleyLNL/mpi-projects/FD2D
+CMAKE_SOURCE_DIR = /Users/LNLB/mpi-projects/FD2D
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/BradleyLNL/mpi-projects/FD2D
+CMAKE_BINARY_DIR = /Users/LNLB/mpi-projects/FD2D
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -53,7 +53,7 @@ CMAKE_BINARY_DIR = /Users/BradleyLNL/mpi-projects/FD2D
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
-	"/Applications/CMake 2.8-12.app/Contents/bin/ccmake" -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/opt/local/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -63,7 +63,7 @@ edit_cache/fast: edit_cache
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	"/Applications/CMake 2.8-12.app/Contents/bin/cmake" -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/opt/local/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
@@ -72,14 +72,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(CMAKE_COMMAND) -E cmake_progress_start /Users/BradleyLNL/mpi-projects/FD2D/CMakeFiles /Users/BradleyLNL/mpi-projects/FD2D/fdgrid/CMakeFiles/progress.marks
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/BradleyLNL/mpi-projects/FD2D/CMakeFiles 0
+	cd /Users/LNLB/mpi-projects/FD2D && $(CMAKE_COMMAND) -E cmake_progress_start /Users/LNLB/mpi-projects/FD2D/CMakeFiles /Users/LNLB/mpi-projects/FD2D/fdgrid/CMakeFiles/progress.marks
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/LNLB/mpi-projects/FD2D/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/clean
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/clean
 .PHONY : clean
 
 # The main clean target
@@ -88,22 +88,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/preinstall
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/preinstall
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /Users/LNLB/mpi-projects/FD2D && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 fdgrid/CMakeFiles/fdGrids.dir/rule:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/CMakeFiles/fdGrids.dir/rule
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f CMakeFiles/Makefile2 fdgrid/CMakeFiles/fdGrids.dir/rule
 .PHONY : fdgrid/CMakeFiles/fdGrids.dir/rule
 
 # Convenience name for target.
@@ -112,7 +112,7 @@ fdGrids: fdgrid/CMakeFiles/fdGrids.dir/rule
 
 # fast build rule for target.
 fdGrids/fast:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/build
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/build
 .PHONY : fdGrids/fast
 
 LocalGrid.o: LocalGrid.cpp.o
@@ -120,7 +120,7 @@ LocalGrid.o: LocalGrid.cpp.o
 
 # target to build an object file
 LocalGrid.cpp.o:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/LocalGrid.cpp.o
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/LocalGrid.cpp.o
 .PHONY : LocalGrid.cpp.o
 
 LocalGrid.i: LocalGrid.cpp.i
@@ -128,7 +128,7 @@ LocalGrid.i: LocalGrid.cpp.i
 
 # target to preprocess a source file
 LocalGrid.cpp.i:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/LocalGrid.cpp.i
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/LocalGrid.cpp.i
 .PHONY : LocalGrid.cpp.i
 
 LocalGrid.s: LocalGrid.cpp.s
@@ -136,7 +136,7 @@ LocalGrid.s: LocalGrid.cpp.s
 
 # target to generate assembly for a file
 LocalGrid.cpp.s:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/LocalGrid.cpp.s
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/LocalGrid.cpp.s
 .PHONY : LocalGrid.cpp.s
 
 communicatorMap.o: communicatorMap.cpp.o
@@ -144,7 +144,7 @@ communicatorMap.o: communicatorMap.cpp.o
 
 # target to build an object file
 communicatorMap.cpp.o:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/communicatorMap.cpp.o
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/communicatorMap.cpp.o
 .PHONY : communicatorMap.cpp.o
 
 communicatorMap.i: communicatorMap.cpp.i
@@ -152,7 +152,7 @@ communicatorMap.i: communicatorMap.cpp.i
 
 # target to preprocess a source file
 communicatorMap.cpp.i:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/communicatorMap.cpp.i
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/communicatorMap.cpp.i
 .PHONY : communicatorMap.cpp.i
 
 communicatorMap.s: communicatorMap.cpp.s
@@ -160,7 +160,7 @@ communicatorMap.s: communicatorMap.cpp.s
 
 # target to generate assembly for a file
 communicatorMap.cpp.s:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/communicatorMap.cpp.s
+	cd /Users/LNLB/mpi-projects/FD2D && $(MAKE) -f fdgrid/CMakeFiles/fdGrids.dir/build.make fdgrid/CMakeFiles/fdGrids.dir/communicatorMap.cpp.s
 .PHONY : communicatorMap.cpp.s
 
 # Help Target
@@ -189,6 +189,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /Users/BradleyLNL/mpi-projects/FD2D && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /Users/LNLB/mpi-projects/FD2D && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

@@ -6,13 +6,15 @@
 
 #IncludeRegexTransform: 
 
-/Users/BradleyLNL/mpi-projects/FD2D/fdgrid/LocalGrid.cpp
+/Users/LNLB/mpi-projects/FD2D/fdgrid/LocalGrid.cpp
 LocalGrid.h
-/Users/BradleyLNL/mpi-projects/FD2D/fdgrid/LocalGrid.h
+/Users/LNLB/mpi-projects/FD2D/fdgrid/LocalGrid.h
 string
 -
+convectiveCooling.h
+-
 
-/Users/BradleyLNL/mpi-projects/FD2D/fdgrid/LocalGrid.h
+/Users/LNLB/mpi-projects/FD2D/fdgrid/LocalGrid.h
 stdio.h
 -
 fstream
@@ -23,26 +25,24 @@ mpi.h
 -
 fdUtils.h
 -
+boundaryCondition.h
+-
 
-/Users/BradleyLNL/mpi-projects/FD2D/fdgrid/communicatorMap.cpp
-communicatorMap.h
-/Users/BradleyLNL/mpi-projects/FD2D/fdgrid/communicatorMap.h
-
-/Users/BradleyLNL/mpi-projects/FD2D/fdgrid/communicatorMap.h
+boundaryConditions/boundaryCondition.h
 stdio.h
 -
 vector
 -
 iostream
 -
-fstream
+string
 -
-math.h
+
+boundaryConditions/convectiveCooling.h
+stdio.h
 -
-LocalGrid.h
-/Users/BradleyLNL/mpi-projects/FD2D/fdgrid/LocalGrid.h
-fdUtils.h
--
+boundaryCondition.h
+boundaryConditions/boundaryCondition.h
 
 fdutils/fdUtils.h
 math.h

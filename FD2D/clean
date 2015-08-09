@@ -2,4 +2,4 @@
 
 make clean
 
-rm -rf CMakeFiles *Cache* *.cmake MakeFile
+rm -rf CMakeFiles *Cache* *.cmake MakeFile CmakeScripts

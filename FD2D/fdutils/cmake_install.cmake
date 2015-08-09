@@ -1,4 +1,4 @@
-# Install script for directory: /Users/BradleyLNL/mpi-projects/FD2D/fdutils
+# Install script for directory: /Users/LNLB/mpi-projects/FD2D/fdutils
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)

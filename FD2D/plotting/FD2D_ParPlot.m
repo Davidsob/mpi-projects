@@ -2,7 +2,7 @@
 close all; clear all; clc;
 
 %% open file
-path = '/Users/davidson/MPI-Tutorials/FD2D/';
+path = '/Users/LNLB/mpi-projects/FD2D/';
 file = 'grids/graph.dat';
 
 % format ix, jy, nx, ny, color,
@@ -25,13 +25,13 @@ for i = 0:parts-1
 end
 
 %% plot the data using a unit step in x, y, (z)
-movie = 1;
+movie = 0;
 if(movie)
     writer = avifile('heat.avi');
     writer.Quality = 100;
 end
 
-color_by_part = 1;
+color_by_part = 0;
 figure(1)
 
 hndls = {parts,1};
@@ -62,7 +62,7 @@ if(movie)
     writer = addframe(writer,frame);
 end
 
-frames = 200;
+frames = 1000;
 if(frames == 0), return; end
 
 
@@ -90,7 +90,8 @@ end
 extents = ones(1,6);
 extents(1:2:end) = -max(abs(mins),abs(maxs));
 extents(2:2:end) = max(abs(mins),abs(maxs));
-axis([0 1 0 1 extents(5:6)]);
+% axis([0 1 0 1 extents(5:6)]);
+axis([0 1 0 1 300 750]);
 %% make a movie!
 if frames == 1; frames = 2; end
 if frames > files; frames = files; end

@@ -21,7 +21,7 @@ using namespace FDUtils;
 #define CLAMP(A,B,C) A > B && A < C
 
 static int filecount = 0;
-static const string saveto = "/Users/davidson/MPI-Tutorials/FD2D/";
+static const string saveto = "/Users/LNLB/mpi-projects/FD2D/";
 
 // set initial conditions for problem
 void setIC(vector<double> & um, vector<double> &u0,
@@ -106,7 +106,7 @@ int main(int argc, char ** argv)
   MPI_Scatter(all_neighbors.data(),4*sizeof(int),MPI_BYTE,
               tmp.data(), 4*sizeof(int),MPI_BYTE,0,MPI_COMM_WORLD);
   
-  my_grid.setNeibors(tmp);
+  my_grid.setNeighbors(tmp);
   MPI_Barrier(MPI_COMM_WORLD);
   
   // print results on local processors

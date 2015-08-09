@@ -3,23 +3,28 @@ cmake_minimum_required(VERSION 2.8)
 
 add_subdirectory(fdgrid)
 add_subdirectory(fdutils)
+add_subdirectory(boundaryConditions)
 
 include_directories(
 fdgrid
 fdsources
 fdutils
+boundaryConditions
 /usr/local/include/
 )
 
 set(EXTERNAL_LIBRARIES
 fdGrids
 fdutils
+boundaryConditions
 )
 
 # set the executable
 add_executable(Wave2D fd2d_wave.cpp)
 target_link_libraries(Wave2D ${EXTERNAL_LIBRARIES})
 
-
 add_executable(Heat2D fd2d_heat.cpp)
 target_link_libraries(Heat2D ${EXTERNAL_LIBRARIES})
+
+add_executable(HeatAdvection2D fd2d_heat_advection.cpp)
+target_link_libraries(HeatAdvection2D ${EXTERNAL_LIBRARIES})

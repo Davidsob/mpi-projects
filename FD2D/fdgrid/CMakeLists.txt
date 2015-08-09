@@ -10,6 +10,7 @@ LocalGrid.cpp
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/fdutils
+    ${PROJECT_SOURCE_DIR}/boundaryConditions
 )
 
 set(EXTERNAL_LIBRARIES
