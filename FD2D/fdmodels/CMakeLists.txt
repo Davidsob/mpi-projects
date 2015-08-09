@@ -1,0 +1,23 @@
+set(HEADERS
+
+)
+
+set(SOURCES
+
+)
+
+include_directories(
+${PROJECT_SOURCE_DIR}/fdutils
+${PROJECT_SOURCE_DIR}/boundaryConditions
+${PROJECT_SOURCE_DIR}/fdgrid
+${PROJECT_SOURCE_DIR}/fdsources
+)
+
+set(EXTERNAL_LIBS
+    fdGrids
+    fdutils
+    boundaryConditions
+)
+
+add_library(models ${HEADERS} ${SOURCES})
+target_link_libraries(models ${EXTERNAL_LIBS})
