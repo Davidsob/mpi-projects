@@ -3,6 +3,7 @@ boundaryCondition.h
 dirchletBoundaryCondition.h
 neumannBoundaryCondition.h
 convectiveCooling.h
+boundaryConditions.h
 )
 
 set(SOURCES

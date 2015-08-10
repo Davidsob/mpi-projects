@@ -13,6 +13,7 @@
 
 #define MIN(A,B) A < B ? A : B
 
+
 using namespace std;
 using namespace FDSource;
 using namespace FDGrid;
@@ -46,8 +47,8 @@ int main(int argc, char ** argv)
     int rank, nproc;
     getWorldInfo(MPI_COMM_WORLD,rank,nproc);
     
-    int divx = 12;
-    int divy = 12;
+    int divx = 15;
+    int divy = 15;
     int Nx = divx+1;
     int Ny = divy+1;
     
@@ -91,9 +92,9 @@ int main(int argc, char ** argv)
 
     // set up model
     // Courant number
-    double CFL = 0.5;
+    double CFL = 0.05;
     double t_end = 1.0;
-    double hx = 1.0/(Nx - 1.0) , hy = 1.0/(Ny - 1.0);
+    double hx = 1.0/(Nx-1.0) , hy = 1.0/(Ny - 1.0);
     
     model->setEndTime(t_end);
     model->setGridSpacing(hx,0);
@@ -105,8 +106,6 @@ int main(int argc, char ** argv)
     model->setFileName("u.dat");
     MPI_Barrier(MPI_COMM_WORLD);
     
- 
-    
     // initialize solution vectors
     model->initModel();
     
@@ -117,19 +116,24 @@ int main(int argc, char ** argv)
     model->setThermalConductivity(unit);
     
     // set boundary conditions
-    double Tcold = 100;
-    double Thot = 500;
+    double Tinit = 500;
+    double T_amb = 300;
+    double hc = -1.0;
     double insulation = 0;
     
-    dirchletBoundaryCondition * cold = new dirchletBoundaryCondition(Tcold);
-    dirchletBoundaryCondition * hot = new dirchletBoundaryCondition(Thot);
-    neumannBoundaryCondition * insulating = new neumannBoundaryCondition(insulation,hy);
-    model->setBoundaryConditions({cold,insulating,hot,insulating});
+    dirchletBoundaryCondition * fixed = new dirchletBoundaryCondition(Tinit);
+    convectiveCooling * cooling_SN = new convectiveCooling(hc,T_amb,hy);
+    convectiveCooling * cooling_E = new convectiveCooling(hc,T_amb,hx);
+    model->setBoundaryConditions({fixed,cooling_SN,cooling_E,cooling_SN});
     
     // set velocity components
+    ConstantSource * u = new ConstantSource(-10);
+    ConstantSource * v = new ConstantSource(20);
+    model->set_u(u);
+    model->set_v(v);
     
     // set initial condition
-    ConstantSource * ic = new ConstantSource(Tcold);
+    ConstantSource * ic = new ConstantSource(Tinit);
     model->setInitialCondition(ic);
     
     // set IC
@@ -164,11 +168,11 @@ int main(int argc, char ** argv)
     // clean up
     delete model;
     delete unit;
-    
-    delete cold;
-    delete hot;
-    delete insulating;
-    
+    delete u;
+    delete v;
+    delete fixed;
+    delete cooling_E;
+    delete cooling_SN;
     delete ic;
     
     MPI_Finalize();

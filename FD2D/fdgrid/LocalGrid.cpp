@@ -150,100 +150,79 @@ vector<double> LocalGrid::getBoundaryValues(FDUtils::GRID_DIRECTION direction, c
     return tmp;
 }
 
-void LocalGrid::updateBoundaryConditions(const vector<double> &u,
-                                         vector<vector<double>> &nbrs_data,
-                                         MPI_Comm comm) const
-{
-    if(!this->boundary_grid)return;
-   
-    for(size_t i = 0; i < this->neighbors.size(); i++)
-    {
-        if(this->neighbors[i] == -1)
-        {
-            if(this->bcs[i]->getName() == "convectiveCooling")
-            {
-                vector<double> boundary_u = this->getBoundaryValues(FDUtils::GRID_DIRECTION(i), u);
-                dynamic_cast<convectiveCooling *>(bcs[i])->updateBC(nbrs_data[i], boundary_u);
-            }else{
-                this->bcs[i]->updateBC(nbrs_data[i]);
-            }
-        }
-    }
-}
 
-void LocalGrid::stencilPoints(const Point2d &ij, double &uW,
-                              double &uS, double &uE, double &uN,
+void LocalGrid::stencilPoints(const Point2d &ij,
                               const vector<double> &u,
-                              const vector<vector<double>> &nbr_u, int print) const
+                              const vector<vector<double>> &nbr_u, FDUtils::Stencil &S, int print) const
 {
+    S.O = u[idxFromCoord(ij.i, ij.j)];
+    
     if(CLAMP(ij.i, 0, this->l_rows) && CLAMP(ij.j, 0, this->l_cols))
     {
-        uW = u[idxFromCoord(ij.i, ij.j-1)];
-        uS = u[idxFromCoord(ij.i-1, ij.j)];
-        uE = u[idxFromCoord(ij.i, ij.j+1)];
-        uN = u[idxFromCoord(ij.i+1, ij.j)];
+        S.W = u[idxFromCoord(ij.i, ij.j-1)];
+        S.S = u[idxFromCoord(ij.i-1, ij.j)];
+        S.E = u[idxFromCoord(ij.i, ij.j+1)];
+        S.N = u[idxFromCoord(ij.i+1, ij.j)];
     }else if (CLAMP(ij.i, 0, this->l_rows) && ij.j == 0) // west boundary
     {
-        uW = nbr_u[0][ij.i];
-        uS = u[idxFromCoord(ij.i-1, ij.j)];
-        uE = u[idxFromCoord(ij.i, ij.j+1)];
-        uN = u[idxFromCoord(ij.i+1, ij.j)];
+        S.W = nbr_u[0][ij.i];
+        S.S = u[idxFromCoord(ij.i-1, ij.j)];
+        S.E = u[idxFromCoord(ij.i, ij.j+1)];
+        S.N = u[idxFromCoord(ij.i+1, ij.j)];
         if(print) printf("{%d, %d} = west boundary\n",ij.i,ij.j);
     }else if (ij.i == 0 && CLAMP(ij.j, 0, this->l_cols)) // south boundary
     {
-        uW = u[idxFromCoord(ij.i, ij.j-1)];
-        uS = nbr_u[1][ij.j];
-        uE = u[idxFromCoord(ij.i, ij.j+1)];
-        uN = u[idxFromCoord(ij.i+1, ij.j)];
+        S.W = u[idxFromCoord(ij.i, ij.j-1)];
+        S.S = nbr_u[1][ij.j];
+        S.E = u[idxFromCoord(ij.i, ij.j+1)];
+        S.N = u[idxFromCoord(ij.i+1, ij.j)];
         if(print) printf("{%d, %d} = south boundary\n",ij.i,ij.j);
     }else if (CLAMP(ij.i, 0, this->l_rows) && ij.j == this->l_cols) // east boundary
     {
-        uW = u[idxFromCoord(ij.i, ij.j-1)];
-        uS = u[idxFromCoord(ij.i-1, ij.j)];
-        uE = nbr_u[2][ij.i];
-        uN = u[idxFromCoord(ij.i+1, ij.j)];
+        S.W = u[idxFromCoord(ij.i, ij.j-1)];
+        S.S = u[idxFromCoord(ij.i-1, ij.j)];
+        S.E = nbr_u[2][ij.i];
+        S.N = u[idxFromCoord(ij.i+1, ij.j)];
         if(print) printf("{%d, %d} = east boundary\n",ij.i,ij.j);
     }else if (ij.i == this->l_rows && CLAMP(ij.j, 0, this->l_cols)) // north boundary
     {
-        uW = u[idxFromCoord(ij.i, ij.j-1)];
-        uS = u[idxFromCoord(ij.i-1, ij.j)];
-        uE = u[idxFromCoord(ij.i, ij.j+1)];
-        uN = nbr_u[3][ij.j];
+        S.W = u[idxFromCoord(ij.i, ij.j-1)];
+        S.S = u[idxFromCoord(ij.i-1, ij.j)];
+        S.E = u[idxFromCoord(ij.i, ij.j+1)];
+        S.N = nbr_u[3][ij.j];
         if(print) printf("{%d, %d} = north boundary\n",ij.i,ij.j);
     }else if (ij.i == 0 && ij.j == 0) // southwest corner
     {
-        uW = nbr_u[0][ij.i];
-        uS = nbr_u[1][ij.j];
-        uE = u[idxFromCoord(ij.i, ij.j+1)];
-        uN = u[idxFromCoord(ij.i+1, ij.j)];
+        S.W = nbr_u[0][ij.i];
+        S.S = nbr_u[1][ij.j];
+        S.E = u[idxFromCoord(ij.i, ij.j+1)];
+        S.N = u[idxFromCoord(ij.i+1, ij.j)];
         if(print) printf("{%d, %d} = sw corner\n",ij.i,ij.j);
     }else if (ij.i == 0 && ij.j == this->l_cols) // southeast corner
     {
-        uW = u[idxFromCoord(ij.i, ij.j-1)];
-        uS = nbr_u[1][ij.j];
-        uE = nbr_u[2][ij.i];
-        uN = u[idxFromCoord(ij.i+1, ij.j)];
+        S.W = u[idxFromCoord(ij.i, ij.j-1)];
+        S.S = nbr_u[1][ij.j];
+        S.E = nbr_u[2][ij.i];
+        S.N = u[idxFromCoord(ij.i+1, ij.j)];
         if(print) printf("{%d, %d} = se corner\n",ij.i,ij.j);
     }else if (ij.i == this->l_rows && ij.j == this->l_cols) // northeast corner
     {
-        uW = u[idxFromCoord(ij.i, ij.j-1)];
-        uS = u[idxFromCoord(ij.i-1, ij.j)];
-        uE = nbr_u[2][ij.i];
-        uN = nbr_u[3][ij.j];
+        S.W = u[idxFromCoord(ij.i, ij.j-1)];
+        S.S = u[idxFromCoord(ij.i-1, ij.j)];
+        S.E = nbr_u[2][ij.i];
+        S.N = nbr_u[3][ij.j];
         if(print) printf("{%d, %d} = ne corner\n",ij.i,ij.j);
     }else if (ij.i == this->l_rows && ij.j == 0) // northwest corner
     {
-        uW = nbr_u[0][ij.i];
-        uS = u[idxFromCoord(ij.i-1, ij.j)];
-        uE = u[idxFromCoord(ij.i, ij.j+1)];
-        uN = nbr_u[3][ij.j];
+        S.W = nbr_u[0][ij.i];
+        S.S = u[idxFromCoord(ij.i-1, ij.j)];
+        S.E = u[idxFromCoord(ij.i, ij.j+1)];
+        S.N = nbr_u[3][ij.j];
         if(print) printf("{%d, %d} = nw corner\n",ij.i,ij.j);
     }else{
         printf("ERROR!!!!!! point {%d, %d} not catergorized!!!!!\n"
                "{rows,cols} = {%d, %d}\n", ij.i, ij.j, l_rows, l_cols);
     }
-    
-    
 }
 
 // write grid to file stream

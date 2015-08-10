@@ -90,8 +90,8 @@ end
 extents = ones(1,6);
 extents(1:2:end) = -max(abs(mins),abs(maxs));
 extents(2:2:end) = max(abs(mins),abs(maxs));
-% axis([0 1 0 1 extents(5:6)]);
-axis([0 1 0 1 300 750]);
+axis([0 1 0 1 extents(5:6)]);
+% axis([0 1 0 1 300 750]);
 %% make a movie!
 if frames == 1; frames = 2; end
 if frames > files; frames = files; end
@@ -117,4 +117,6 @@ for i = (1+del_files):del_files:files
     end
 end
 
+if(movie)
 writer = close(writer);
+end

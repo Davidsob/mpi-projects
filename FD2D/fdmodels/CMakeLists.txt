@@ -1,9 +1,11 @@
 set(HEADERS
-
+FDModel.h
+FDHeatTransfer.h
 )
 
 set(SOURCES
-
+FDModel.cpp
+FDHeatTransfer.cpp
 )
 
 include_directories(

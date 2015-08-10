@@ -43,18 +43,15 @@ namespace FDGrid
                                      vector<double> &nbr_u,
                                      MPI_Comm comm) const;
         
-        /// return u, uw, us, ue, un
-        void stencilPoints(const Point2d &ij, double &uW,
-                           double &uS, double &uE, double &uN,
+        /// return u, uw, us, ue, un // return a stenci
+        void stencilPoints(const Point2d &ij,
                            const vector<double> &u,
-                           const vector<vector<double>> &nbr_u, int print = 0) const;
+                           const vector<vector<double>> &nbr_u, FDUtils::Stencil &S, int print = 0) const;
         
         // return boundary points for boundary {
         vector<double> getBoundaryValues(FDUtils::GRID_DIRECTION direction,
                                          const vector<double> &u) const;
-        /// update boundary conditions
-        void updateBoundaryConditions(const vector<double> &u,
-                                      vector<vector<double>> &nbrs_data,MPI_Comm comm) const;
+
         // write grid to file stream
         void write(ofstream &file) const;
         
@@ -81,7 +78,6 @@ namespace FDGrid
         }
             
         void setGlobalCoordinate(int i, int j){ij.i = i, ij.j = j;}
-        void setBoundaryCondtions(const vector<boundaryCondition *> &bcs){this->bcs = bcs;}
         
         //getters
         int getRows() const
@@ -101,10 +97,7 @@ namespace FDGrid
         const vector<int> & getNeighbors() const
         {return this->neighbors;}
         
-        const vector<boundaryCondition *> getBoundaryConditions() const
-        {
-            return this->bcs;
-        }
+        bool isBoundaryGrid(){return this->boundary_grid;};
         
     private:
         
@@ -118,9 +111,7 @@ namespace FDGrid
         bool boundary_grid;
         
         vector<int> neighbors; // neibors list (w,s,e,n)
-        
-        vector<boundaryCondition *> bcs; // pointers to boundary conditions
-        
+                
     };
     
 }

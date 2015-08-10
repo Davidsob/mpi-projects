@@ -15,33 +15,37 @@
 using namespace std;
 
 namespace FDUtils {
-
-  typedef enum GRID_DIRECTION{
     
-    WEST,
-    SOUTH,
-    EAST,
-    NORTH,
-    BOTTOM,
-    TOP,
+    typedef enum GRID_DIRECTION{
+        
+        WEST,
+        SOUTH,
+        EAST,
+        NORTH,
+        BOTTOM,
+        TOP,
+        
+    }GRID_DIRECTION;
     
-  }GRID_DIRECTION;
-  
-//  std::string stringForDirection(GRID_DIRECTION direction);
-  
-  struct Point2d
-  {
-    int i,
-    j;
-  };
-  
-  int idxFromCoord(int i, int j, int cols);
-
-  // means
-  double arithemeticMean(double x1, double x2);
-  
-  double harmonicMean(double x1, double x2);
-  
-  double geometricMean(double x1, double x2);
+    //  std::string stringForDirection(GRID_DIRECTION direction);
+    
+    struct Point2d
+    {
+        int i,j;
+    };
+    
+    struct Stencil
+    {
+        double O,W,E,S,N,B,T;
+    };
+    
+    int idxFromCoord(int i, int j, int cols);
+    
+    // means
+    double arithemeticMean(double x1, double x2);
+    
+    double harmonicMean(double x1, double x2);
+    
+    double geometricMean(double x1, double x2);
 }
 #endif
