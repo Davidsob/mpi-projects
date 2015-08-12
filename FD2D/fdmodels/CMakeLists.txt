@@ -1,11 +1,13 @@
 set(HEADERS
 FDModel.h
 FDHeatTransfer.h
+FDTransport.h
 )
 
 set(SOURCES
 FDModel.cpp
 FDHeatTransfer.cpp
+FDTransport.cpp
 )
 
 include_directories(

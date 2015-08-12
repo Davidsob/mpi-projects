@@ -31,3 +31,6 @@ target_link_libraries(Heat2D ${EXTERNAL_LIBRARIES})
 
 add_executable(HeatAdvection2D fd2d_heat_advection.cpp)
 target_link_libraries(HeatAdvection2D ${EXTERNAL_LIBRARIES})
+
+add_executable(Transport2D fd2d_transport.cpp)
+target_link_libraries(Transport2D ${EXTERNAL_LIBRARIES})
