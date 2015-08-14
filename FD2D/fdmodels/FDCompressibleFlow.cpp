@@ -1,14 +1,24 @@
 #include "FDCompressibleFlow.h"
+#include "FDHeatTransfer.h"
+#include "FDTransport.h"
 
 FDCompressibleFlow::FDCompressibleFlow(int dim)
 : FDModel(dim)
 {
-    bcs = {nullptr,nullptr,nullptr,nullptr};
+    FDHeatTransfer * ht = new FDHeatTransfer(dim);
+    FDTransport * mass = new FDTransport(dim);
+    
+    this->addModel("energy", ht);
+    this->addModel("mass transport", mass);
 }
 
 FDCompressibleFlow::~FDCompressibleFlow()
 {
+    FDModel * heat = getModel("energy");
+    delete dynamic_cast<FDHeatTransfer *>(heat);
     
+    FDModel * mass = getModel("mass transport");
+    delete dynamic_cast<FDTransport *>(mass);
 }
 
 void FDCompressibleFlow::initModel()
@@ -16,8 +26,18 @@ void FDCompressibleFlow::initModel()
     // set local storage
     int local_els = (grid->getRows()+1)*(grid->getCols()+1);
     vector<double> zeros(local_els,0);
-    this->setData("T", zeros);
-    this->setData("Tp", zeros);
+    this->setData("U", zeros);
+    this->setData("Up", zeros);
+    
+    this->setData("V", zeros);
+    this->setData("Vp", zeros);
+    
+    this->setData("W", zeros);
+    this->setData("Wp", zeros);
+    
+    this->setData("divU", zeros);
+    this->setData("px", zeros);
+    this->setData("py", zeros);
 }
 
 void FDCompressibleFlow::applyBoundaryConditions(MPI_Comm comm)
@@ -27,17 +47,21 @@ void FDCompressibleFlow::applyBoundaryConditions(MPI_Comm comm)
     int local_cols = this->grid->getCols();
     
     vector<int> nbr = this->grid->getNeighbors();
-    vector<double> &U = this->getData("T");
-    // set dirchlet
-    if(nbr[0] == -1)
-        for(i = 0; i <= local_rows; i++) this->bcs[0]->setBC(U[this->grid->idxFromCoord(i, 0)]);
-    if(nbr[1] == -1)
-        for(i = 0; i <= local_cols; i++) this->bcs[1]->setBC(U[this->grid->idxFromCoord(0, i)]);
-    if(nbr[2] == -1)
-        for(i = 0; i <= local_rows; i++) this->bcs[2]->setBC(U[this->grid->idxFromCoord(i, local_cols)]);
-    if(nbr[3] == -1)
-        for(i = 0; i <= local_cols; i++) this->bcs[3]->setBC(U[this->grid->idxFromCoord(local_rows, i)]);
     
+    // set dirchlet
+    for(auto bc : this->bcs)
+    {
+        vector<double> &Ui = this->getData(bc.first);
+        if(nbr[0] == -1)
+            for(i = 0; i <= local_rows; i++) bc.second[0]->setBC(Ui[this->grid->idxFromCoord(i, 0)]);
+        if(nbr[1] == -1)
+            for(i = 0; i <= local_cols; i++) bc.second[1]->setBC(Ui[this->grid->idxFromCoord(0, i)]);
+        if(nbr[2] == -1)
+            for(i = 0; i <= local_rows; i++) bc.second[2]->setBC(Ui[this->grid->idxFromCoord(i, local_cols)]);
+        if(nbr[3] == -1)
+            for(i = 0; i <= local_cols; i++) bc.second[3]->setBC(Ui[this->grid->idxFromCoord(local_rows, i)]);
+        
+    }
     MPI_Barrier(comm);
 }
 
@@ -47,16 +71,21 @@ void FDCompressibleFlow::updateBoundaryConditions(vector<vector<double>> &nbrs_d
     
     const vector<int> &nbrs = this->grid->getNeighbors();
     
-    for(size_t i = 0; i < nbrs.size(); i++)
+    for(auto bc : this->bcs)
     {
-        if(nbrs[i] == -1)
+        vector<vector<double>> & nbr_data =  getSharedData(bc.first);
+        vector<double> &Ui = getData(bc.first);
+        for(size_t i = 0; i < nbrs.size(); i++)
         {
-            if(this->bcs[i]->getName() == "convectiveCooling")
+            if(nbrs[i] == -1)
             {
-                vector<double> boundary_u = this->grid->getBoundaryValues(FDUtils::GRID_DIRECTION(i), getData("T"));
-                dynamic_cast<convectiveCooling *>(bcs[i])->updateBC(nbrs_data[i], boundary_u);
-            }else{
-                this->bcs[i]->updateBC(nbrs_data[i]);
+                if(bc.second[i]->getName() == "convectiveCooling")
+                {
+                    vector<double> boundary_val = this->grid->getBoundaryValues(FDUtils::GRID_DIRECTION(i), Ui);
+                    dynamic_cast<convectiveCooling *>(bc.second[i])->updateBC(nbr_data[i], boundary_val);
+                }else{
+                    bc.second[i]->updateBC(nbr_data[i]);
+                }
             }
         }
     }
@@ -64,7 +93,10 @@ void FDCompressibleFlow::updateBoundaryConditions(vector<vector<double>> &nbrs_d
 
 void FDCompressibleFlow::applyInitialConditions(MPI_Comm comm)
 {
-    if (!hasSource("initial condition")) return;
+    this->getModel("mass transfer")->applyInitialConditions(comm);
+    this->getModel("energy")->applyInitialConditions(comm);
+    
+    if (!hasSource("initial condition u") || !hasSource("initial condition v")) return;
     // want to get left and right values from neihbors
     int rank , nproc;
     MPI_Comm_size(comm, &nproc);
@@ -79,15 +111,19 @@ void FDCompressibleFlow::applyInitialConditions(MPI_Comm comm)
     double x,y;
     
     // 1 set initial Temperature at 0
-    vector<double> &U = getData("T");
-    PhysicalSource * ic = getSource("initial condition");
+    vector<double> &U = this->getData("U");
+    vector<double> &V = this->getData("V");
+    
+    PhysicalSource * ic_u = getSource("initial condition u");
+    PhysicalSource * ic_v = getSource("initial condition v");
     for (i = 0; i <= local_rows; i++) {
         for(j = 0; j <= local_cols; j++)
         {
             idx = this->grid->idxFromCoord(i,j);
             x = (local_ij.j + j)*this->hx;
             y = (local_ij.i + i)*this->hy;
-            U[idx] = ic->operator()(x, y, 0, this->t_start);;
+            U[idx] = ic_u->operator()(x, y, 0, this->t_start);
+            V[idx] = ic_v->operator()(x, y, 0, this->t_start);
         }
     }
     
@@ -128,7 +164,8 @@ double FDCompressibleFlow::calculateDiffusion(const FDUtils::Stencil &T, const F
 double FDCompressibleFlow::calculateAdvection(const FDUtils::Stencil &T,
                                               const FDUtils::Stencil &u,
                                               const FDUtils::Stencil &v,
-                                              const FDUtils::Stencil &w)
+                                              const FDUtils::Stencil &w,
+                                              const FDUtils::Stencil &div)
 {
     double advection = 0;
     if(this->dim >= 0)
@@ -155,8 +192,8 @@ double FDCompressibleFlow::calculateAdvection(const FDUtils::Stencil &T,
             advection += w.O * (T.T - T.O)/this->hz;
     }
     
-    advection += T.O * this->calculateDivergence(u,v,w);
-    return -1.0 * advection;
+    advection += T.O * div.O;
+    return advection;
 }
 
 
@@ -207,7 +244,14 @@ void FDCompressibleFlow::solve(MPI_Comm comm)
         this->t += dt;
         if(rank == 0) printf("begin step: %lu, time: %f[s]\n",step_no, this->t);
         
+        // 1. update mas transport
+        getModel("mass transport")->advanceSolution(dt, comm);
+        
+        // 2. update velocity field
         this->advanceSolution(dt,comm);
+        
+        // 3. update temperature
+        getModel("energy")->advanceSolution(dt, comm);
         
         MPI_Barrier(comm);
         if((step_no % write_every) == 0 || this->t >= this->t_end)
@@ -218,6 +262,10 @@ void FDCompressibleFlow::solve(MPI_Comm comm)
 
 void FDCompressibleFlow::advanceSolution(double dt,MPI_Comm comm)
 {
+    // 0. calculate pressure,
+    //  momentum, and divU.
+    this->updateData();
+    
     // share data
     for (auto p : this->data)
         FDModel::getDataFromNeighbors(getData(p.first), getSharedData(p.first), comm);
@@ -227,8 +275,12 @@ void FDCompressibleFlow::advanceSolution(double dt,MPI_Comm comm)
     MPI_Barrier(comm);
     
     
-    vector<double> &Up = getData("Tp");
-    vector<double> &U = getData("T");
+    vector<double> &Up = getData("Up");
+    vector<double> &U = getData("U");
+    
+    vector<double> &Vp = getData("Up");
+    vector<double> &V = getData("U");
+    
     double source = 0;
     size_t idx;
     Point2d ij{0,0};
@@ -240,34 +292,61 @@ void FDCompressibleFlow::advanceSolution(double dt,MPI_Comm comm)
         for(int j = 0; j <= local_cols; j++)
         {
             ij.i = i; ij.j = j;
-            
+            idx = this->grid->idxFromCoord(i , j);
+
+            // set all stencils
             for (auto p : this->stencils)
             {
                 this->grid->stencilPoints(ij, getData(p.first), getSharedData(p.first), getStencil(p.first));
             }
             
+            // update u
             /// diffusion term
-            Stencil T = getStencil("T");
-            source = this->calculateDiffusion(T,getStencil("K"));
-            /// advection term
-            if(hasSource("u") || hasSource("v")|| hasSource("w"))
-                source += this->calculateAdvection(T,getStencil("u"),getStencil("v"),getStencil("w"));
+            Stencil u = getStencil("U");
+            Stencil v = getStencil("V");
+            Stencil w = getStencil("W");
+            Stencil P = getStencil("pressure");
+            Stencil px = getStencil("px");
+            Stencil py = getStencil("py");
+            Stencil divU = getStencil("divU");
+            Stencil mu = getStencil("mu");
             
-            if(hasSource("pressure"))
-                source += this->calculateDeformationEnergy(T,getStencil("pressure"));
             
-            idx = this->grid->idxFromCoord(i , j);
+            /// diffusion term
+            source = this->calculateDiffusion(u,mu);
+            // volumetric expansion
+            source += mu.O * this->calculatePartialDerivative(divU, 0)/3.0;
+            // advection term
+            source -= this->calculateAdvection(px,u,v,w,divU);
+            // pressure term
+            source -= this->calculatePartialDerivative(P, 0);
+             // gravitational body force
+            if(this->hasSource("gx"))
+                source += getStencil("gx").O * getStencil("density").O;
             
             Up[idx] =  U[idx] + dt * source;
             
+            
+            // update v
+            /// diffusion term
+            source = this->calculateDiffusion(v,mu);
+            // volumetric expansion
+            source += mu.O * this->calculatePartialDerivative(divU, 1)/3.0;
+            // advection term
+            source -= this->calculateAdvection(py,u,v,w,divU);
+            // pressure term
+            source -= this->calculatePartialDerivative(P, 1);
+            // gravitational body force
+            if(this->hasSource("gy"))
+                source += getStencil("gy").O * getStencil("density").O;
+            
+            Vp[idx] =  V[idx] + dt * source;
+            
         }
     }
-    //    size_t k = 0;
-    //    for(double ui : U)
-    //    {
-    //        printf("U[%d] = %f, Up[%k] = %f\n",k, ui,k, Up[k++]);
-    //    }
+
     U = Up;
+    V = Vp;
 }
 
 void FDCompressibleFlow::write(MPI_Comm comm)
@@ -317,6 +396,63 @@ void FDCompressibleFlow::write(MPI_Comm comm)
         
         file << this->t <<"\n";
         file.close();
+    }
+}
+
+void FDCompressibleFlow::updateData()
+{
+    this->calculatePressure();
+    this->calculateGridDivergence();
+    this->calculateMomentum();
+}
+
+void FDCompressibleFlow::calculatePressure()
+{
+    static const double R = 461.5;
+    vector<double> &rho = this->getData("density");
+    vector<double> &T = this->getData("temperature");
+    vector<double> &p = this->getData("pressure");
+    size_t k = 0;
+    for(double &pi : p){
+        pi = rho[k] * R * T[k];
+        k++;
+    }
+    
+}
+
+void FDCompressibleFlow::calculateGridDivergence()
+{
+    vector<double> &div = this->getData("divU");
+    size_t idx;
+    Point2d ij;
+    vector<string>vars = {"U", "V", "W"};
+    for (int i = 0; i <= this->grid->getRows(); i++) {
+        for(int j = 0; j <= this->grid->getCols(); j++)
+        {
+            ij.i = i; ij.j = j;
+            idx = this->grid->idxFromCoord(i , j);
+            
+            for(const string &s : vars)
+                this->grid->stencilPoints(ij, getData(s), getSharedData(s), getStencil(s));
+            
+            div[idx] = this->calculateDivergence(getStencil("U"), getStencil("V"), getStencil("W"));
+        }
+    }
+}
+
+void FDCompressibleFlow::calculateMomentum()
+{
+    vector<double> &rho = this->getData("density");
+    vector<double> &U = this->getData("U");
+    vector<double> &V = this->getData("V");
+    vector<double> &px = this->getData("px");
+    vector<double> &py = this->getData("py");
+    
+    size_t k = 0;
+    for(const double &rho_i : rho){
+        px[k] = rho_i * U[k];
+        py[k] = rho_i * V[k];
+        k++;
     }
 }
 

@@ -14,7 +14,6 @@ dat = textread(strcat(path,file));
 files = dat(1);
 parts = dat(2);
 C = dat(3);
-dt = dat(4);
 
 filename = 'solutions/u.dat.';
 fno = 0;
@@ -23,6 +22,8 @@ for i = 0:parts-1
     file = sprintf('%s%s%0.3d.proc_%d',path,filename,fno,i);
     data{i+1} = textread(file);
 end
+
+time = textread(strcat(path,'solutions/time.dat'));
 
 %% plot the data using a unit step in x, y, (z)
 movie = 0;
@@ -54,17 +55,15 @@ for i = 1:1:parts
 end
 
 % daspect([1 1 1]);
-tit = sprintf('2D-Wave: C = %1.2g, t = %1.3f[s]',C,0*dt);
+tit = sprintf('2D-Wave: C = %1.2g, t = %1.3f[s]',C,time(1));
 ht = title(tit);
 set(ht,'fontsize',20);
 if(movie)
     frame = getframe;
     writer = addframe(writer,frame);
 end
-
-frames = 1000;
+frames = 1;
 if(frames == 0), return; end
-
 
 %% get extents of surface plot
 mins = [1e8, 1e8, 1e8];
@@ -93,11 +92,8 @@ extents(2:2:end) = max(abs(mins),abs(maxs));
 axis([0 1 0 1 extents(5:6)]);
 % axis([0 1 0 1 300 750]);
 %% make a movie!
-if frames == 1; frames = 2; end
-if frames > files; frames = files; end
-del_files = floor(files/frames);
-for i = (1+del_files):del_files:files
-    pause(0.005);
+for i = 2:length(time)
+    pause(0.01);
     for j = 1:parts
         file = sprintf('%s%s%0.3d.proc_%d',path,filename,i-1,j-1);
         nr = partition(j,3)+1;
@@ -107,7 +103,7 @@ for i = (1+del_files):del_files:files
         set(hndls{j},'zdata',Z);
     end
     % plot the result
-    tit = sprintf('2D-Wave: C = %1.2g, t = %1.3f[s]',C,i*dt);
+    tit = sprintf('2D-Wave: C = %1.2g, t = %1.3f[s]',C,time(i));
     set(ht,'string',tit);
     grid on
     

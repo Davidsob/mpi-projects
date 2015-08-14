@@ -61,3 +61,15 @@ double FDModel::calculateDivergence(const FDUtils::Stencil &u,
     
     return div;
 }
+
+double FDModel::calculatePartialDerivative(const FDUtils::Stencil &U, int dim)
+{
+    if(this->dim >= 0)
+        return (U.E - U.W)/this->hx/2.0;
+    
+    if(this->dim >= 1)
+        return (U.N - U.S)/this->hy/2.0;
+    
+    if(this->dim >= 2)
+        return (U.T - U.B)/this->hz/2.0;
+}

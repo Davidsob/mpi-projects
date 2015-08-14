@@ -9,7 +9,8 @@
 #include <communicatorMap.h>
 #include <LocalGrid.h>
 
-#include <FDHeatTransfer.h>
+#include <FDCompressibleFlow.h>
+
 
 #define MIN(A,B) A < B ? A : B
 
@@ -53,7 +54,7 @@ int main(int argc, char ** argv)
     int Ny = divy+1;
     
     // Partition Global Grid
-    FDHeatTransfer * model = new FDHeatTransfer(2);
+    FDCompressibleFlow * model = new FDCompressibleFlow(2);
 
     vector<LocalGrid> mesh;
     vector<int> all_neighbors;

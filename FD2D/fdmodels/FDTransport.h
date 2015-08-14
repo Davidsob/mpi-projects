@@ -29,5 +29,6 @@ class FDTransport : public FDModel{
                               const FDUtils::Stencil &w);
     
     vector<boundaryCondition *> bcs;
+    double calculateMaxU();
     double maxU; // max speed
 };

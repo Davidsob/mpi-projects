@@ -138,6 +138,7 @@ class FDModel{
                                         const FDUtils::Stencil &v,
                                         const FDUtils::Stencil &w);
     
+    virtual double calculatePartialDerivative(const FDUtils::Stencil &U, int dim);
     
     vector<double> &getData(const string &name)
     {
@@ -158,6 +159,8 @@ class FDModel{
     {
          return this->sources[name];
     }
+    
+    virtual void updateData(){};
     
   private:
 

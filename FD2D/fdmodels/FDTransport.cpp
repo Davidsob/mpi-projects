@@ -1,4 +1,5 @@
 #include "FDTransport.h"
+#include <cfloat>
 
 FDTransport::FDTransport(int dim)
 : FDModel(dim)
@@ -164,11 +165,17 @@ void FDTransport::solve(MPI_Comm comm)
         }
     }
     
-    MPI_Barrier(comm);
     
-    double dt = this->getTimeStep();
+    
+    // get new dt
+    double dt = 1;
+    double local_max;
     while (this->t <= this->t_end) {
         
+        local_max = calculateMaxU();
+        MPI_Barrier(comm);
+        MPI_Allreduce(&local_max, &maxU, 1, MPI_DOUBLE, MPI_MAX,comm);
+        dt = this->getTimeStep();
         // advance time step
         this->t += dt;
         step_no++;
@@ -274,6 +281,23 @@ void FDTransport::write(MPI_Comm comm)
         file << this->t <<"\n";
         file.close();
     }
+}
+
+double FDTransport::calculateMaxU()
+{
+    vector<double> &u = getData("u");
+    vector<double> &v = getData("v");
+    vector<double> &w = getData("w");
+    double mx = -DBL_MAX;
+    double S;
+    size_t k = 0;
+    for(double ui : u)
+    {
+        S = sqrt(pow(ui, 2) + pow(v[k], 2) + pow(w[k], 2));
+        k++;
+        if(S > mx) mx = S;
+    }
+    return mx;
 }
 
 double FDTransport::getTimeStep()

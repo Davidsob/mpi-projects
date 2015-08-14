@@ -32,5 +32,4 @@ class FDHeatTransfer : public FDModel{
     double calculateDeformationEnergy(const FDUtils::Stencil &T,const FDUtils::Stencil &p);
     
     vector<boundaryCondition *> bcs;
-
-};
+    };

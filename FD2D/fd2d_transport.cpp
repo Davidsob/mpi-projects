@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
     // set up model
     // Courant number
     double CFL = 0.1;
-    double t_end = 3.0;
+    double t_end = 5.0;
     double hx = 1.0/(Nx-1.0) , hy = 1.0/(Ny - 1.0);
     
     model->setEndTime(t_end);
@@ -125,7 +125,7 @@ int main(int argc, char ** argv)
     model->setSource("w", w,true);
     
     // set initial condition
-    GaussianSource * ic  = new GaussianSource(0.9,0.5,0.1,0.1,1.0);
+    GaussianSource * ic  = new GaussianSource(0.9,0.5,0.1,0.1,2.0);
     model->setSource("initial condition", ic);
     
     // set IC
