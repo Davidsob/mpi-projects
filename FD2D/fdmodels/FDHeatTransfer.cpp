@@ -3,27 +3,12 @@
 FDHeatTransfer::FDHeatTransfer(int dim)
 : FDModel(dim)
 {
-    rho = nullptr;
-    Cp = nullptr;
-    K = nullptr;
-    u = nullptr;
-    v = nullptr;
-    w = nullptr;
-    p = nullptr;
     bcs = {nullptr,nullptr,nullptr,nullptr};
 }
 
 FDHeatTransfer::~FDHeatTransfer()
 {
-    //    if(rho) delete rho;
-    //    if(Cp) delete Cp;
-    //    if(K) delete Cp;
-    //    if(u) delete u;
-    //    if(v) delete v;
-    //    if(w) delete w;
-    //    if(p) delete p;
-    //    for(boundaryCondition * bc : this->bcs)
-    //      if(bc) delete bc;
+
 }
 
 void FDHeatTransfer::initModel()
@@ -31,8 +16,8 @@ void FDHeatTransfer::initModel()
     // set local storage
     int local_els = (grid->getRows()+1)*(grid->getCols()+1);
     vector<double> zeros(local_els,0);
-    this->setU(zeros);
-    this->setUp(zeros);
+    this->setData("T", zeros);
+    this->setData("Tp", zeros);
 }
 
 void FDHeatTransfer::applyBoundaryConditions(MPI_Comm comm)
@@ -42,15 +27,16 @@ void FDHeatTransfer::applyBoundaryConditions(MPI_Comm comm)
     int local_cols = this->grid->getCols();
     
     vector<int> nbr = this->grid->getNeighbors();
+    vector<double> &U = this->getData("T");
     // set dirchlet
     if(nbr[0] == -1)
-        for(i = 0; i <= local_rows; i++) this->bcs[0]->setBC(this->U[this->grid->idxFromCoord(i, 0)]);
+        for(i = 0; i <= local_rows; i++) this->bcs[0]->setBC(U[this->grid->idxFromCoord(i, 0)]);
     if(nbr[1] == -1)
-        for(i = 0; i <= local_cols; i++) this->bcs[1]->setBC(this->U[this->grid->idxFromCoord(0, i)]);
+        for(i = 0; i <= local_cols; i++) this->bcs[1]->setBC(U[this->grid->idxFromCoord(0, i)]);
     if(nbr[2] == -1)
-        for(i = 0; i <= local_rows; i++) this->bcs[2]->setBC(this->U[this->grid->idxFromCoord(i, local_cols)]);
+        for(i = 0; i <= local_rows; i++) this->bcs[2]->setBC(U[this->grid->idxFromCoord(i, local_cols)]);
     if(nbr[3] == -1)
-        for(i = 0; i <= local_cols; i++) this->bcs[3]->setBC(this->U[this->grid->idxFromCoord(local_rows, i)]);
+        for(i = 0; i <= local_cols; i++) this->bcs[3]->setBC(U[this->grid->idxFromCoord(local_rows, i)]);
     
     MPI_Barrier(comm);
 }
@@ -67,7 +53,7 @@ void FDHeatTransfer::updateBoundaryConditions(vector<vector<double>> &nbrs_data,
         {
             if(this->bcs[i]->getName() == "convectiveCooling")
             {
-                vector<double> boundary_u = this->grid->getBoundaryValues(FDUtils::GRID_DIRECTION(i), this->U);
+                vector<double> boundary_u = this->grid->getBoundaryValues(FDUtils::GRID_DIRECTION(i), getData("T"));
                 dynamic_cast<convectiveCooling *>(bcs[i])->updateBC(nbrs_data[i], boundary_u);
             }else{
                 this->bcs[i]->updateBC(nbrs_data[i]);
@@ -78,6 +64,7 @@ void FDHeatTransfer::updateBoundaryConditions(vector<vector<double>> &nbrs_data,
 
 void FDHeatTransfer::applyInitialConditions(MPI_Comm comm)
 {
+    if (!hasSource("initial condition")) return;
     // want to get left and right values from neihbors
     int rank , nproc;
     MPI_Comm_size(comm, &nproc);
@@ -92,13 +79,15 @@ void FDHeatTransfer::applyInitialConditions(MPI_Comm comm)
     double x,y;
     
     // 1 set initial Temperature at 0
+    vector<double> &U = getData("T");
+    PhysicalSource * ic = getSource("initial condition");
     for (i = 0; i <= local_rows; i++) {
         for(j = 0; j <= local_cols; j++)
         {
             idx = this->grid->idxFromCoord(i,j);
             x = (local_ij.j + j)*this->hx;
             y = (local_ij.i + i)*this->hy;
-            this->U[idx] = this->initial_condition->operator()(x, y, 0, this->t_start);;
+            U[idx] = ic->operator()(x, y, 0, this->t_start);;
         }
     }
     
@@ -184,8 +173,7 @@ void FDHeatTransfer::solve(MPI_Comm comm)
     MPI_Comm_rank(comm, &rank);
     
     size_t i, j, idx, step_no = 0;
-    double dt = this->getTimeStep();
-    
+    // write initial solution
     this->write(comm);
     
     // get local informaion
@@ -193,95 +181,93 @@ void FDHeatTransfer::solve(MPI_Comm comm)
     int local_cols = this->grid->getCols();
     Point2d local_ij = this->grid->getLocalCoordinate();
     
-    // get
+    // initialize all data fields
     double x,y;
-    vector<double> Kij(this->U.size(),0);
-    vector<double> u_ij(this->U.size(),0);
-    vector<double> v_ij(this->U.size(),0);
-    vector<double> w_ij(this->U.size(),0);
-    vector<double> p_ij(this->U.size(),0);
-
     for (i = 0; i <= local_rows; i++) {
         for(j = 0; j <= local_cols; j++)
         {
             idx = this->grid->idxFromCoord(i,j);
             x = (local_ij.j + j)*this->hx;
             y = (local_ij.i + i)*this->hy;
-            Kij[idx] = 1.0;
-            if(this->u) u_ij[idx] = this->u->operator()(x, y, 0, dt);
-            if(this->v) v_ij[idx] = this->v->operator()(x, y, 0, dt);
-            if(this->w) w_ij[idx] = this->w->operator()(x, y, 0, dt);
-            if(this->p) p_ij[idx] = this->p->operator()(x, y, 0, dt);
+            
+            for(auto p : this->sources)
+            {
+                if(hasData(p.first))
+                    getData(p.first)[idx] = p.second->operator()(x, y, 0, this->t);
+            }
         }
     }
     
     MPI_Barrier(comm);
-    
-    // initialze stenice data
-    Stencil T, Kmat, su, sv, sw, sp;
 
-    vector<vector<double>> neighbors_data(4,{0});
-    vector<vector<double>> neighbors_k(4,{0});
-    vector<vector<double>> neighbors_u(4,{0});
-    vector<vector<double>> neighbors_v(4,{0});
-    vector<vector<double>> neighbors_w(4,{0});
-    vector<vector<double>> neighbors_p(4,{0});
-    Point2d ij{0,0};
-    double source = 0;
+    // begin solve
+    double dt = this->getTimeStep();
     while (this->t <= this->t_end) {
-        
-        // advance time step
-        this->t += dt;
         step_no++;
+        this->t += dt;
         if(rank == 0) printf("begin step: %lu, time: %f[s]\n",step_no, this->t);
         
-        // share data
-        FDModel::getDataFromNeighbors(this->U,neighbors_data,comm);
-        FDModel::getDataFromNeighbors(Kij,neighbors_k,comm);
-        if(this->u) FDModel::getDataFromNeighbors(u_ij,neighbors_u,comm);
-        if(this->v) FDModel::getDataFromNeighbors(v_ij,neighbors_v,comm);
-        if(this->w) FDModel::getDataFromNeighbors(w_ij,neighbors_w,comm);
-        if(this->p) FDModel::getDataFromNeighbors(p_ij,neighbors_p,comm);
-        
-        // update boundary conditions
-        this->updateBoundaryConditions(neighbors_data,comm);
+        this->advanceSolution(dt,comm);
         
         MPI_Barrier(comm);
-        
-        for(int i = 0; i <= local_rows; i++)
-        {
-            for(j = 0; j <= local_cols; j++)
-            {
-                ij.i = i;
-                ij.j = j;
-                idx = this->grid->idxFromCoord(i , j);
-                
-                this->grid->stencilPoints(ij,this->U, neighbors_data, T);
-                this->grid->stencilPoints(ij,Kij,neighbors_k, Kmat);
-                if(this->u) this->grid->stencilPoints(ij, u_ij, neighbors_u, su);
-                if(this->v) this->grid->stencilPoints(ij, v_ij, neighbors_v, sv);
-                if(this->w) this->grid->stencilPoints(ij, w_ij, neighbors_w, sw);
-                if(this->p) this->grid->stencilPoints(ij, p_ij, neighbors_p, sp);
-                
-                /// diffusion term
-                source = this->calculateDiffusion(T,Kmat);
-                /// advection term
-                if(this->u || this->v || this->w)
-                    source += this->calculateAdvection(T,su,sv,sw);
-                
-                if(this->p)
-                    source += this->calculateDeformationEnergy(T,sp);
-                
-                this->Up[idx] =  this->U[idx] + dt * source;
-                
-            }
-        }
-        
-        this->U = this->Up;
-        MPI_Barrier(comm);
-        this->write(comm);
+        if((step_no % write_every) == 0 || this->t >= this->t_end)
+            this->write(comm);
     }
     
+}
+
+void FDHeatTransfer::advanceSolution(double dt,MPI_Comm comm)
+{
+    // share data
+    for (auto p : this->data)
+        FDModel::getDataFromNeighbors(getData(p.first), getSharedData(p.first), comm);
+    
+    // update boundary conditions
+    this->updateBoundaryConditions(getSharedData("T"),comm);
+    MPI_Barrier(comm);
+    
+    
+    vector<double> &Up = getData("Tp");
+    vector<double> &U = getData("T");
+    double source = 0;
+    size_t idx;
+    Point2d ij{0,0};
+    int local_rows = this->grid->getRows();
+    int local_cols = this->grid->getCols();
+    
+    for(int i = 0; i <= local_rows; i++)
+    {
+        for(int j = 0; j <= local_cols; j++)
+        {
+            ij.i = i; ij.j = j;
+    
+            for (auto p : this->stencils)
+            {
+                this->grid->stencilPoints(ij, getData(p.first), getSharedData(p.first), getStencil(p.first));
+            }
+            
+            /// diffusion term
+            Stencil T = getStencil("T");
+            source = this->calculateDiffusion(T,getStencil("K"));
+            /// advection term
+            if(hasSource("u") || hasSource("v")|| hasSource("w"))
+                source += this->calculateAdvection(T,getStencil("u"),getStencil("v"),getStencil("w"));
+            
+            if(hasSource("pressure"))
+                source += this->calculateDeformationEnergy(T,getStencil("pressure"));
+            
+            idx = this->grid->idxFromCoord(i , j);
+
+            Up[idx] =  U[idx] + dt * source;
+            
+        }
+    }
+//    size_t k = 0;
+//    for(double ui : U)
+//    {
+//        printf("U[%d] = %f, Up[%k] = %f\n",k, ui,k, Up[k++]);
+//    }
+    U = Up;
 }
 
 void FDHeatTransfer::write(MPI_Comm comm)
@@ -306,6 +292,7 @@ void FDHeatTransfer::write(MPI_Comm comm)
     Point2d local_ij = this->grid->getLocalCoordinate();
     int rows = this->grid->getRows();
     int cols = this->grid->getCols();
+    vector<double> &U = getData("T");
     
     for (i = 0; i <= rows; i++) {
         for(j = 0; j <= cols; j++)
@@ -313,13 +300,24 @@ void FDHeatTransfer::write(MPI_Comm comm)
             idx = this->grid->idxFromCoord(i, j);
             x = (local_ij.j + j)*this->hx;
             y = (local_ij.i + i)*this->hy;
-            file << x << "\t" << y << "\t" << this->U[idx] <<"\n";
+            file << x << "\t" << y << "\t" << U[idx] <<"\n";
         }
     }
     
     file.close();
     
-    if(rank == 0) FDModel::file_count++;
+    if(rank == 0)
+    {
+        FDModel::file_count++;
+        sprintf(title, "/time.dat");
+        if(this->t == this->t_start)
+            file.open(this->output_path + string(title));
+        else
+            file.open(this->output_path + string(title),ios::app);
+        
+        file << this->t <<"\n";
+        file.close();
+    }
 }
 
 double FDHeatTransfer::getTimeStep()

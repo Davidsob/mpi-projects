@@ -29,7 +29,7 @@ class FDModel{
     FDModel(int _dim = 0)
     : dim(_dim), CFL(1.0),
     t(0), t_start(0), t_end(0),
-    hx(1), hy(1), hz(1), grid (new LocalGrid){};
+    hx(1), hy(1), hz(1), grid (new LocalGrid), write_every(1){};
     
     virtual ~FDModel(){
         delete this->grid;
@@ -41,13 +41,22 @@ class FDModel{
     virtual void applyBoundaryConditions(MPI_Comm comm) = 0;
     virtual void updateBoundaryConditions(MPI_Comm comm){};
     virtual void solve(MPI_Comm comm) = 0;
+    virtual void advanceSolution(double, MPI_Comm comm) = 0; // advance solution for new time
     virtual void write(MPI_Comm comm){}; // default do nothingi
     virtual void setBoundaryConditions(){} // default do nothing
     virtual double getTimeStep() = 0;
     
     // getters
-    const vector<double> & getU(){return this->U;}
-    const vector<double> & getUp(){return this->Up;}
+    bool hasData(const string &name)
+    {
+        return this->data.find(name) != this->data.end();
+    }
+    
+    bool hasSource(const string &name)
+    {
+        return this->sources.find(name) != this->sources.end();
+    }
+    
     LocalGrid * getGrid(){return this->grid;}
     double getCFL(){return CFL;}
     double getTime(){return this->t;}
@@ -70,13 +79,35 @@ class FDModel{
         }
     }
     
-    void setU(const vector<double> &_u){this->U = _u;}
-    void setUp(const vector<double> &_up){this->Up = _up;}
+    void setData(const string &name, vector<double> &x)
+    {
+        this->data.insert(std::pair<string, vector<double>>(name,x));
+        
+        // automatically add shared data
+        vector<vector<double>> shared_zeros(4,{0});
+        this->shared_data.insert(std::pair<string, vector<vector<double>> >(name,shared_zeros));
+        
+        // set stencil automatically
+        Stencil s;
+        this->stencils.insert(std::pair<string, FDUtils::Stencil >(name,s));
+    }
+    
+    void setSource(const string &name, PhysicalSource * S, bool initData = false)
+    {
+        this->sources.insert(std::pair<string, PhysicalSource *>(name,S));
+        if(initData)
+        {
+            int local_els = (grid->getRows()+1)*(grid->getCols()+1);
+            vector<double> tmp(local_els,0);
+            this->setData(name, tmp);
+        }
+    }
+    
     void setGrid(LocalGrid * _grid){this->grid = _grid;}
-    void setInitialCondition(PhysicalSource * _IC){this->initial_condition = _IC;}
     void setOuputFilePath(const string &path){this->output_path = path;}
     void setFileName(const string &name){this->base_file_name = name;}
-    
+    void setWriteEveryNthStep(size_t n){this->write_every = n;}
+
     
   protected:
     int dim;
@@ -87,16 +118,16 @@ class FDModel{
     double hx,hy,hz; // uniform grid spacing
     
     LocalGrid * grid;
-    vector<double> U;
-    vector<double> Up;
-    
-    PhysicalSource * initial_condition;
+    map<string, vector<double>> data;
+    map<string, PhysicalSource *> sources;
+    map<string, vector<vector<double>> > shared_data; //neighboring data
+    map<string, FDUtils::Stencil> stencils; //stencil structs
     
     // for writing data
     static size_t file_count;
     string output_path;
     string base_file_name;
-    
+    size_t write_every;
     
     // utility
     void getDataFromNeighbors(vector<double> &data,
@@ -106,6 +137,27 @@ class FDModel{
     virtual double calculateDivergence(const FDUtils::Stencil &u,
                                         const FDUtils::Stencil &v,
                                         const FDUtils::Stencil &w);
+    
+    
+    vector<double> &getData(const string &name)
+    {
+        return this->data[name];
+    }
+    
+    vector<vector<double>> &getSharedData(const string &name)
+    {
+         return this->shared_data[name];
+    }
+    
+    FDUtils::Stencil &getStencil(const string &name)
+    {
+         return this->stencils[name];
+    }
+    
+    PhysicalSource * getSource(const string &name)
+    {
+         return this->sources[name];
+    }
     
   private:
 

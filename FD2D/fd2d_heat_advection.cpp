@@ -104,6 +104,7 @@ int main(int argc, char ** argv)
     // set write data info
     model->setOuputFilePath(saveto + "/solutions/");
     model->setFileName("u.dat");
+    model->setWriteEveryNthStep(20);
     MPI_Barrier(MPI_COMM_WORLD);
     
     // initialize solution vectors
@@ -111,9 +112,9 @@ int main(int argc, char ** argv)
     
     // set physical properties
     ConstantSource * unit  = new ConstantSource(1.0);
-    model->setDensity(unit);
-    model->setHeatCapacity(unit);
-    model->setThermalConductivity(unit);
+    model->setSource("rho", unit,true);
+    model->setSource("K", unit,true);
+    model->setSource("Cp", unit,true);
     
     // set boundary conditions
     double Tinit = 500;
@@ -129,12 +130,14 @@ int main(int argc, char ** argv)
     // set velocity components
     ConstantSource * u = new ConstantSource(-10);
     ConstantSource * v = new ConstantSource(20);
-    model->set_u(u);
-    model->set_v(v);
+    ConstantSource * w = new ConstantSource(0);
+    model->setSource("u", u,true);
+    model->setSource("v", v,true);
+    model->setSource("w", w,true);
     
     // set initial condition
     ConstantSource * ic = new ConstantSource(Tinit);
-    model->setInitialCondition(ic);
+    model->setSource("initial condition",ic,true);
     
     // set IC
     if(rank == 0) printf("Applying initial conditions...\n");
@@ -157,7 +160,6 @@ int main(int argc, char ** argv)
         file << FDModel::getFileCount() << "\n";
         file << nproc << "\n";
         file << model->getCFL() << "\n";
-        file << model->getTimeStep() <<"\n";
         file.close();
         
         timer += MPI_Wtime();
@@ -168,8 +170,11 @@ int main(int argc, char ** argv)
     // clean up
     delete model;
     delete unit;
+    
     delete u;
     delete v;
+    delete w;
+    
     delete fixed;
     delete cooling_E;
     delete cooling_SN;

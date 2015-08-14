@@ -37,6 +37,10 @@ namespace FDUtils {
     struct Stencil
     {
         double O,W,E,S,N,B,T;
+        void print(const char * title) const
+        {
+            printf("%s:{%f, %f, %f, %f, %f, %f, %f}\n",title, O, W, E, S, N, B, T);
+        }
     };
     
     int idxFromCoord(int i, int j, int cols);

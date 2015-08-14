@@ -46,8 +46,8 @@ int main(int argc, char ** argv)
     int rank, nproc;
     getWorldInfo(MPI_COMM_WORLD,rank,nproc);
     
-    int divx = 12;
-    int divy = 12;
+    int divx = 40;
+    int divy = 40;
     int Nx = divx+1;
     int Ny = divy+1;
     
@@ -103,18 +103,17 @@ int main(int argc, char ** argv)
     // set write data info
     model->setOuputFilePath(saveto + "/solutions/");
     model->setFileName("u.dat");
+    model->setWriteEveryNthStep(25);
     MPI_Barrier(MPI_COMM_WORLD);
-    
- 
     
     // initialize solution vectors
     model->initModel();
     
     // set physical properties
     ConstantSource * unit  = new ConstantSource(1.0);
-    model->setDensity(unit);
-    model->setHeatCapacity(unit);
-    model->setThermalConductivity(unit);
+    model->setSource("rho", unit,true);
+    model->setSource("K", unit,true);
+    model->setSource("Cp", unit,true);
     
     // set boundary conditions
     double Tcold = 100;
@@ -130,7 +129,7 @@ int main(int argc, char ** argv)
     
     // set initial condition
     ConstantSource * ic = new ConstantSource(Tcold);
-    model->setInitialCondition(ic);
+    model->setSource("initial condition", ic);
     
     // set IC
     if(rank == 0) printf("Applying initial conditions...\n");
@@ -153,7 +152,6 @@ int main(int argc, char ** argv)
         file << FDModel::getFileCount() << "\n";
         file << nproc << "\n";
         file << model->getCFL() << "\n";
-        file << model->getTimeStep() <<"\n";
         file.close();
         
         timer += MPI_Wtime();

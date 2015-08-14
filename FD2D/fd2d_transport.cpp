@@ -47,8 +47,8 @@ int main(int argc, char ** argv)
     int rank, nproc;
     getWorldInfo(MPI_COMM_WORLD,rank,nproc);
     
-    int divx = 50;
-    int divy = 50;
+    int divx = 40;
+    int divy = 40;
     int Nx = divx+1;
     int Ny = divy+1;
     
@@ -104,6 +104,7 @@ int main(int argc, char ** argv)
     // set write data info
     model->setOuputFilePath(saveto + "/solutions/");
     model->setFileName("u.dat");
+    model->setWriteEveryNthStep(50);
     MPI_Barrier(MPI_COMM_WORLD);
     
     // initialize solution vectors
@@ -118,12 +119,14 @@ int main(int argc, char ** argv)
     // set velocity components
     RadialSource2D * u = new RadialSource2D(0.5,0.5,2.0,0);
     RadialSource2D * v = new RadialSource2D(0.5,0.5,2.0,1);
-    model->set_u(u);
-    model->set_v(v);
+    ConstantSource * w = new ConstantSource(0);
+    model->setSource("u", u,true);
+    model->setSource("v", v,true);
+    model->setSource("w", w,true);
     
     // set initial condition
     GaussianSource * ic  = new GaussianSource(0.9,0.5,0.1,0.1,1.0);
-    model->setInitialCondition(ic);
+    model->setSource("initial condition", ic);
     
     // set IC
     if(rank == 0) printf("Applying initial conditions...\n");
@@ -145,7 +148,6 @@ int main(int argc, char ** argv)
         file << FDModel::getFileCount() << "\n";
         file << nproc << "\n";
         file << model->getCFL() << "\n";
-        file << model->getTimeStep() <<"\n";
         file.close();
         
         timer += MPI_Wtime();
@@ -155,8 +157,11 @@ int main(int argc, char ** argv)
     
     // clean up
     delete model;
+    
     delete u;
     delete v;
+    delete w;
+    
     delete noflux_SN;
     delete noflux_WE;
     delete ic;
