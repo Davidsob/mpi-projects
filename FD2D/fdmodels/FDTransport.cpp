@@ -159,7 +159,9 @@ void FDTransport::solve(MPI_Comm comm)
         if(rank == 0) printf("begin step: %lu, time: %f[s]\n",step_no, this->t);
         
         this->advanceSolution(dt, comm);
-        
+      
+      // set solution
+      this->data_manager->getData(primary_variable) = this->data_manager->getData(primary_variable+"p");
         MPI_Barrier(comm);
         if((step_no % write_every) == 0 || this->t >= this->t_end)
             this->write(comm);
@@ -214,8 +216,7 @@ void FDTransport::advanceSolution(double dt, MPI_Comm comm)
             
         }
     }
-    
-    U = Up;
+//    U = Up;
 }
 
 void FDTransport::write(MPI_Comm comm)

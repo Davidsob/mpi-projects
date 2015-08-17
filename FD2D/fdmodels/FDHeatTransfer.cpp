@@ -1,7 +1,7 @@
 #include "FDHeatTransfer.h"
 
 FDHeatTransfer::FDHeatTransfer(string variable_name, int dim)
-: FDModel(dim), primary_variable(variable_name)
+: FDModel(dim), primary_variable(variable_name), coupled(false)
 {
     bcs = {nullptr,nullptr,nullptr,nullptr};
 }
@@ -194,7 +194,10 @@ void FDHeatTransfer::solve(MPI_Comm comm)
         if(rank == 0) printf("begin step: %lu, time: %f[s]\n",step_no, this->t);
         
         this->advanceSolution(dt,comm);
-        
+      
+        // set solution
+        this->data_manager->getData(primary_variable) = this->data_manager->getData(primary_variable+"p");
+      
         MPI_Barrier(comm);
         if((step_no % write_every) == 0 || this->t >= this->t_end)
             this->write(comm);
@@ -254,19 +257,20 @@ void FDHeatTransfer::advanceSolution(double dt,MPI_Comm comm)
                                                    );
             }
             
-            
-            // pressure term
-            if(this->data_manager->hasSource("pressure"))
-                source += this->calculateDeformationEnergy(T,this->data_manager->getStencil("pressure"));
-            
             idx = this->grid->idxFromCoord(i , j);
-
-            Up[idx] =  U[idx] + dt * source;
+            if(this->coupled)
+            {
+              if(this->data_manager->hasSource("pressure"))
+                source += this->calculateDeformationEnergy(T,this->data_manager->getStencil("pressure"));
+              
+            }else{
+              Up[idx] =  U[idx] + dt * sourc
+            }
             
         }
     }
-    
-    U = Up;
+  
+//  if(!this->coupled) U = Up;
 }
 
 void FDHeatTransfer::write(MPI_Comm comm)

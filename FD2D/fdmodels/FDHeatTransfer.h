@@ -25,7 +25,7 @@ public:
 private:
     string primary_variable;
     string initial_condition;
-    
+  bool coupled;
     double calculateDiffusion(const FDUtils::Stencil &T, const FDUtils:: Stencil &K);
     double calculateAdvection(const FDUtils::Stencil &T,
                               const FDUtils::Stencil &u,
