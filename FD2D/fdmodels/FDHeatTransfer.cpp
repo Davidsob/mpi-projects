@@ -264,7 +264,7 @@ void FDHeatTransfer::advanceSolution(double dt,MPI_Comm comm)
                 source += this->calculateDeformationEnergy(T,this->data_manager->getStencil("pressure"));
               
             }else{
-              Up[idx] =  U[idx] + dt * sourc
+              Up[idx] =  U[idx] + dt * source;
             }
             
         }
