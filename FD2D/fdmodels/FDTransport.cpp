@@ -1,11 +1,10 @@
 #include "FDTransport.h"
 #include <cfloat>
 
-FDTransport::FDTransport(int dim)
-: FDModel(dim)
+FDTransport::FDTransport(string variable_name, int dim)
+: FDModel(dim), primary_variable(variable_name)
 {
     bcs = {nullptr,nullptr,nullptr,nullptr};
-    maxU = 1;
 }
 
 FDTransport::~FDTransport()
@@ -16,21 +15,28 @@ FDTransport::~FDTransport()
 void FDTransport::initModel()
 {
     // set local storage
-    int local_els = (grid->getRows()+1)*(grid->getCols()+1);
+    int local_els = this->grid->getNumberOfGridPoints();
     vector<double> zeros(local_els,0);
     
-    this->setData("U", zeros);
-    this->setData("Up", zeros);
+    this->data_manager->setData(primary_variable, zeros);
+    this->data_manager->setData(primary_variable+"p", zeros);
 }
 
 void FDTransport::applyBoundaryConditions(MPI_Comm comm)
 {
+    
+    if(!this->grid->isBoundaryGrid())
+    {
+        printf("NO BOUNDARY GRID!!!\n");
+        return;
+    }
+    
     size_t i = 0;
     int local_rows = this->grid->getRows();
     int local_cols = this->grid->getCols();
     
     vector<int> nbr = this->grid->getNeighbors();
-    vector<double> &U = this->getData("U");
+    vector<double> &U = this->data_manager->getData(primary_variable);
     // set dirchlet
     if(nbr[0] == -1)
         for(i = 0; i <= local_rows; i++) this->bcs[0]->setBC(U[this->grid->idxFromCoord(i, 0)]);
@@ -46,10 +52,14 @@ void FDTransport::applyBoundaryConditions(MPI_Comm comm)
 
 void FDTransport::updateBoundaryConditions(vector<vector<double>> &nbrs_data, MPI_Comm comm)
 {
-    if(!this->grid->isBoundaryGrid()) return;
+    if(!this->grid->isBoundaryGrid())
+    {
+        printf("NO BOUNDARY GRID!!!\n");
+        return;
+    }
     
     const vector<int> &nbrs = this->grid->getNeighbors();
-    vector<double> &U = this->getData("U");
+    vector<double> &U = this->data_manager->getData(primary_variable);
     
     for(size_t i = 0; i < nbrs.size(); i++)
     {
@@ -68,30 +78,20 @@ void FDTransport::updateBoundaryConditions(vector<vector<double>> &nbrs_data, MP
 
 void FDTransport::applyInitialConditions(MPI_Comm comm)
 {
-    if (!hasSource("initial condition")) return;
+    if (!this->data_manager->hasSource(initial_condition)) return;
     // want to get left and right values from neihbors
     int rank , nproc;
     MPI_Comm_size(comm, &nproc);
     MPI_Comm_rank(comm, &rank);
     
-    // get local informaion
-    int local_rows = this->grid->getRows();
-    int local_cols = this->grid->getCols();
-    Point2d local_ij = this->grid->getLocalCoordinate();
-    
-    size_t i, j, idx;
+    vector<double> &U = this->data_manager->getData(primary_variable);
+    PhysicalSource *ic =  this->data_manager->getSource(initial_condition);
     double x,y;
-    vector<double> &U = this->getData("U");
-    PhysicalSource *ic = getSource("initial condition");
-    // 1 set initial Temperature at 0
-    for (i = 0; i <= local_rows; i++) {
-        for(j = 0; j <= local_cols; j++)
-        {
-            idx = this->grid->idxFromCoord(i,j);
-            x = (local_ij.j + j)*this->hx;
-            y = (local_ij.i + i)*this->hy;
-            U[idx] = ic->operator()(x, y, 0, this->t_start);;
-        }
+    for (int idx = 0; idx < this->grid->getNumberOfGridPoints(); idx++) {
+        
+        x = this->grid->getX(idx);
+        y = this->grid->getY(idx);
+        U[idx] = ic->operator()(x, y, 0, this->t_start);;
     }
     
     MPI_Barrier(comm);
@@ -103,28 +103,32 @@ double FDTransport::calculateAdvection(const FDUtils::Stencil &U,
                                        const FDUtils::Stencil &w)
 {
     double advection = 0;
-    if(this->dim >= 0)
-    {
-        if(u.O >= 0)
-            advection += u.O * (U.O - U.W)/this->hx;
-        else
-            advection += u.O * (U.E - U.O)/this->hx;
-    }
-    
+
     if(this->dim >= 1)
     {
-        if(v.O >= 0)
-            advection += v.O * (U.O - U.S)/this->hy;
+        double hx = this->grid->get_hx();
+        if(u.O >= 0)
+            advection += u.O * (U.O - U.W)/hx;
         else
-            advection += v.O * (U.N - U.O)/this->hy;
+            advection += u.O * (U.E - U.O)/hx;
     }
     
     if(this->dim >= 2)
     {
-        if(w.O >= 0)
-            advection += w.O * (U.O - U.B)/this->hz;
+        double hy = this->grid->get_hy();
+        if(v.O >= 0)
+            advection += v.O * (U.O - U.S)/hy;
         else
-            advection += w.O * (U.T - U.O)/this->hz;
+            advection += v.O * (U.N - U.O)/hy;
+    }
+    
+    if(this->dim >= 3)
+    {
+        double hz = this->grid->get_hz();
+        if(w.O >= 0)
+            advection += w.O * (U.O - U.B)/hz;
+        else
+            advection += w.O * (U.T - U.O)/hz;
     }
     
     advection += U.O * this->calculateDivergence(u,v,w);
@@ -137,45 +141,18 @@ void FDTransport::solve(MPI_Comm comm)
     MPI_Comm_size(comm, &nproc);
     MPI_Comm_rank(comm, &rank);
     
-    size_t i, j, idx, step_no = 0;
+    size_t step_no = 0;
     
     this->write(comm);
-    
-    // get local informaion
-    int local_rows = this->grid->getRows();
-    int local_cols = this->grid->getCols();
-    Point2d local_ij = this->grid->getLocalCoordinate();
-    
-    // get
-    double x,y;
-    
-    for (i = 0; i <= local_rows; i++) {
-        for(j = 0; j <= local_cols; j++)
-        {
-            idx = this->grid->idxFromCoord(i,j);
-            x = (local_ij.j + j)*this->hx;
-            y = (local_ij.i + i)*this->hy;
-            
-            for(auto p : this->sources)
-            {
-                if(hasData(p.first))
-                    getData(p.first)[idx] = p.second->operator()(x, y, 0, this->t);
-            }
-            
-        }
-    }
-    
-    
-    
+
     // get new dt
-    double dt = 1;
-    double local_max;
+    double dt;
+    this->updateSources();
     while (this->t <= this->t_end) {
         
-        local_max = calculateMaxU();
-        MPI_Barrier(comm);
-        MPI_Allreduce(&local_max, &maxU, 1, MPI_DOUBLE, MPI_MAX,comm);
-        dt = this->getTimeStep();
+        // 0 update sources
+        dt = this->getTimeStep(comm);
+        
         // advance time step
         this->t += dt;
         step_no++;
@@ -193,15 +170,16 @@ void FDTransport::solve(MPI_Comm comm)
 void FDTransport::advanceSolution(double dt, MPI_Comm comm)
 {
     // share data
-    for (auto p : this->data)
-        FDModel::getDataFromNeighbors(getData(p.first), getSharedData(p.first), comm);
+    for (auto p : this->data_manager->availableData())
+        FDModel::getDataFromNeighbors(this->data_manager->getData(p),
+                                      this->data_manager->getSharedData(p), comm);
     
     // update boundary conditions
-    this->updateBoundaryConditions(getSharedData("U"),comm);
+    this->updateBoundaryConditions(this->data_manager->getSharedData(primary_variable),comm);
     MPI_Barrier(comm);
     
-    vector<double> &Up = getData("Up");
-    vector<double> &U = getData("U");
+    vector<double> &Up = this->data_manager->getData(primary_variable+"p");
+    vector<double> &U = this->data_manager->getData(primary_variable);
     double source = 0;
     size_t idx;
     Point2d ij{0,0};
@@ -214,15 +192,22 @@ void FDTransport::advanceSolution(double dt, MPI_Comm comm)
         {
             ij.i = i; ij.j = j;
             
-            for (auto p : this->stencils)
-                this->grid->stencilPoints(ij, getData(p.first), getSharedData(p.first), getStencil(p.first));
+            for (auto p : this->data_manager->availableData())
+                this->grid->stencilPoints(ij,
+                                          this->data_manager->getData(p),
+                                          this->data_manager->getSharedData(p),
+                                          this->data_manager->getStencil(p));
             
             /// advection term
-            if(hasSource("u") || hasSource("v")|| hasSource("w"))
-                source = this->calculateAdvection(getStencil("U"),
-                                                  getStencil("u"),
-                                                  getStencil("v"),
-                                                  getStencil("w"));
+            if(this->data_manager->hasData("u") ||
+               this->data_manager->hasData("v") ||
+               this->data_manager->hasData("w"))
+            {
+                source = this->calculateAdvection(this->data_manager->getStencil(primary_variable),
+                                                  this->data_manager->getStencil("u"),
+                                                  this->data_manager->getStencil("v"),
+                                                  this->data_manager->getStencil("w"));
+            }
             
             idx = this->grid->idxFromCoord(i , j);
             Up[idx] =  U[idx] + dt * source;
@@ -248,24 +233,10 @@ void FDTransport::write(MPI_Comm comm)
     ofstream file;
     file.open(this->output_path + string(title));
     
+    vector<double> &U = this->data_manager->getData(primary_variable);
     
-    double x,y;
-    int idx;
-    int i,j;
-    Point2d local_ij = this->grid->getLocalCoordinate();
-    int rows = this->grid->getRows();
-    int cols = this->grid->getCols();
-    
-    vector<double> &U = this->getData("U");
-    for (i = 0; i <= rows; i++) {
-        for(j = 0; j <= cols; j++)
-        {
-            idx = this->grid->idxFromCoord(i, j);
-            x = (local_ij.j + j)*this->hx;
-            y = (local_ij.i + i)*this->hy;
-            file << x << "\t" << y << "\t" << U[idx] <<"\n";
-        }
-    }
+    for (size_t idx = 0; idx < this->grid->getNumberOfGridPoints(); idx++)
+        file << this->grid->getX(idx) << "\t" << this->grid->getY(idx)  << "\t" << U[idx] <<"\n";
     
     file.close();
     
@@ -285,9 +256,10 @@ void FDTransport::write(MPI_Comm comm)
 
 double FDTransport::calculateMaxU()
 {
-    vector<double> &u = getData("u");
-    vector<double> &v = getData("v");
-    vector<double> &w = getData("w");
+    vector<double> &u = this->data_manager->getData("u");
+    vector<double> &v = this->data_manager->getData("v");
+    vector<double> &w = this->data_manager->getData("w");
+    
     double mx = -DBL_MAX;
     double S;
     size_t k = 0;
@@ -300,8 +272,15 @@ double FDTransport::calculateMaxU()
     return mx;
 }
 
-double FDTransport::getTimeStep()
+double FDTransport::getTimeStep(MPI_Comm comm)
 {
-    return MIN(this->hx/maxU, this->hy/maxU)*this->CFL;
+    int rank = MPI_Comm_rank(comm, &rank);
+    double local_max = calculateMaxU();
+    double maxU = 1.0;
+    MPI_Barrier(comm);
+    MPI_Allreduce(&local_max, &maxU, 1, MPI_DOUBLE, MPI_MAX,comm);
+    if(maxU == 0) maxU = 1.0;
+    
+    return MIN(this->grid->get_hx()/maxU, this->grid->get_hy()/maxU)*this->CFL;
 }
 

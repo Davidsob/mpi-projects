@@ -2,11 +2,10 @@
 
 #include "FDModel.h"
 
-
 class FDCompressibleFlow : public FDModel{
     
 public:
-    FDCompressibleFlow(int dim = 0);
+    FDCompressibleFlow(vector<const string> variable_names = {"u", "v", "w"} , int dim = 0);
     virtual ~FDCompressibleFlow();
     
     virtual void initModel();
@@ -22,15 +21,35 @@ public:
     virtual void advanceSolution(double dt,MPI_Comm comm);
     virtual void solve(MPI_Comm comm);
     virtual void write(MPI_Comm comm);
-    virtual double getTimeStep();
+    virtual double getTimeStep(MPI_Comm comm);
     
     FDModel * getModel(const string & name)
     {
         return this->couplings[name];
     }
+        
+    void setCFL(double _cfl){
+        this->CFL = _cfl;
+        for(auto m : couplings) m.second->setCFL(_cfl);
+    }
     
+    void setTime(double _t){
+        this->t = _t;
+        for(auto m : couplings) m.second->setTime(_t);
+    }
+    
+    virtual void setGrid(LocalGrid * _grid);
+    
+    virtual void setDataManager(FDDataManager * dmngr);
+    
+    void addICName(const string &var, const string &ic_name){
+        this->initial_conditions.insert(pair<string, string>(var, ic_name));
+    }
+
 private:
     
+    const vector<const string> primary_variables;
+    map<string, string> initial_conditions;
     map<string, FDModel *> couplings;
     
     void addModel(const string &name, FDModel * m)
@@ -50,6 +69,7 @@ private:
     void calculatePressure();
     void calculateGridDivergence();
     void calculateMomentum();
+    double calculateMaxU();
     
     map<string, vector<boundaryCondition *>> bcs;
 };

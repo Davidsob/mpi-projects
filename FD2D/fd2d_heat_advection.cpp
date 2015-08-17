@@ -53,8 +53,7 @@ int main(int argc, char ** argv)
     int Ny = divy+1;
     
     // Partition Global Grid
-    FDHeatTransfer * model = new FDHeatTransfer(2);
-
+    LocalGrid * grid = new LocalGrid;
     vector<LocalGrid> mesh;
     vector<int> all_neighbors;
     vector<LocalGrid>grids;
@@ -78,7 +77,7 @@ int main(int argc, char ** argv)
     
     //  // scatter local grids
     MPI_Scatter(grids.data(),sizeof(LocalGrid),MPI_BYTE,
-                model->getGrid(), sizeof(LocalGrid),MPI_BYTE,
+                grid, sizeof(LocalGrid),MPI_BYTE,
                 0,MPI_COMM_WORLD);
     
     //  // scatter neighbor info to local grids
@@ -86,25 +85,31 @@ int main(int argc, char ** argv)
     MPI_Scatter(all_neighbors.data(),4*sizeof(int),MPI_BYTE,
                 tmp.data(), 4*sizeof(int),MPI_BYTE,0,MPI_COMM_WORLD);
     
-    // set up model grid
-    model->getGrid()->setNeighbors(tmp);
+    // finish set up of grid
+    double hx = 1.0/(Nx - 1.0) , hy = 1.0/(Ny - 1.0);
+    grid->setCellIncrements(hx, hy); // set spacing
+    grid->initCoordinates(); // set coordinates
+    grid->setNeighbors(tmp); // set neihbors
+    
     MPI_Barrier(MPI_COMM_WORLD);
+    
+    // set up data manager
+    FDDataManager * data = new FDDataManager(grid->getNumberOfGridPoints());
 
     // set up model
-    // Courant number
     double CFL = 0.05;
     double t_end = 1.0;
-    double hx = 1.0/(Nx-1.0) , hy = 1.0/(Ny - 1.0);
     
+    FDHeatTransfer * model = new FDHeatTransfer("temperature",2);
+    model->setGrid(grid);
+    model->setDataManager(data);
     model->setEndTime(t_end);
-    model->setGridSpacing(hx,0);
-    model->setGridSpacing(hy,1);
     model->setCFL(CFL);
     
     // set write data info
     model->setOuputFilePath(saveto + "/solutions/");
     model->setFileName("u.dat");
-    model->setWriteEveryNthStep(20);
+    model->setWriteEveryNthStep(25);
     MPI_Barrier(MPI_COMM_WORLD);
     
     // initialize solution vectors
@@ -112,15 +117,14 @@ int main(int argc, char ** argv)
     
     // set physical properties
     ConstantSource * unit  = new ConstantSource(1.0);
-    model->setSource("rho", unit,true);
-    model->setSource("K", unit,true);
-    model->setSource("Cp", unit,true);
+    data->setSource("density", unit,true);
+    data->setSource("K", unit,true);
+    data->setSource("Cp", unit,true);
     
     // set boundary conditions
     double Tinit = 500;
     double T_amb = 300;
     double hc = -1.0;
-    double insulation = 0;
     
     dirchletBoundaryCondition * fixed = new dirchletBoundaryCondition(Tinit);
     convectiveCooling * cooling_SN = new convectiveCooling(hc,T_amb,hy);
@@ -131,13 +135,15 @@ int main(int argc, char ** argv)
     ConstantSource * u = new ConstantSource(-10);
     ConstantSource * v = new ConstantSource(20);
     ConstantSource * w = new ConstantSource(0);
-    model->setSource("u", u,true);
-    model->setSource("v", v,true);
-    model->setSource("w", w,true);
+    data->setSource("u", u,true);
+    data->setSource("v", v,true);
+    data->setSource("w", w,true);
     
     // set initial condition
     ConstantSource * ic = new ConstantSource(Tinit);
-    model->setSource("initial condition",ic,true);
+    string ic_name = "IC";
+    model->setICName(ic_name);
+    data->setSource(ic_name, ic);
     
     // set IC
     if(rank == 0) printf("Applying initial conditions...\n");
@@ -168,17 +174,18 @@ int main(int argc, char ** argv)
     }
     
     // clean up
-    delete model;
+    
     delete unit;
-    
-    delete u;
-    delete v;
-    delete w;
-    
     delete fixed;
     delete cooling_E;
     delete cooling_SN;
     delete ic;
+    delete u;
+    delete v;
+    delete w;
+    delete model;
+    delete data;
+    delete grid;
     
     MPI_Finalize();
 }

@@ -10,7 +10,8 @@
 #include <LocalGrid.h>
 
 #include <FDCompressibleFlow.h>
-
+#include <FDTransport.h>
+#include <FDHeatTransfer.h>
 
 #define MIN(A,B) A < B ? A : B
 
@@ -48,13 +49,13 @@ int main(int argc, char ** argv)
     int rank, nproc;
     getWorldInfo(MPI_COMM_WORLD,rank,nproc);
     
-    int divx = 15;
-    int divy = 15;
+    int divx = 40;
+    int divy = 40;
     int Nx = divx+1;
     int Ny = divy+1;
     
     // Partition Global Grid
-    FDCompressibleFlow * model = new FDCompressibleFlow(2);
+    LocalGrid * grid = new LocalGrid;
 
     vector<LocalGrid> mesh;
     vector<int> all_neighbors;
@@ -79,7 +80,7 @@ int main(int argc, char ** argv)
     
     //  // scatter local grids
     MPI_Scatter(grids.data(),sizeof(LocalGrid),MPI_BYTE,
-                model->getGrid(), sizeof(LocalGrid),MPI_BYTE,
+                grid, sizeof(LocalGrid),MPI_BYTE,
                 0,MPI_COMM_WORLD);
     
     //  // scatter neighbor info to local grids
@@ -87,19 +88,26 @@ int main(int argc, char ** argv)
     MPI_Scatter(all_neighbors.data(),4*sizeof(int),MPI_BYTE,
                 tmp.data(), 4*sizeof(int),MPI_BYTE,0,MPI_COMM_WORLD);
     
-    // set up model grid
-    model->getGrid()->setNeighbors(tmp);
+    // finish set up of grid
+    double hx = 1.0/(Nx - 1.0) , hy = 1.0/(Ny - 1.0);
+    grid->setCellIncrements(hx, hy); // set spacing
+    grid->initCoordinates(); // set coordinates
+    grid->setNeighbors(tmp); // set neihbors
+    
     MPI_Barrier(MPI_COMM_WORLD);
+    
+    // set up data manager
+    FDDataManager * data = new FDDataManager(grid->getNumberOfGridPoints());
 
     // set up model
     // Courant number
     double CFL = 0.05;
-    double t_end = 1.0;
-    double hx = 1.0/(Nx-1.0) , hy = 1.0/(Ny - 1.0);
+    double t_end = 3.0;
     
+    FDCompressibleFlow * model = new FDCompressibleFlow({"u", "v"}, 2);
+    model->setGrid(grid);
+    model->setDataManager(data);
     model->setEndTime(t_end);
-    model->setGridSpacing(hx,0);
-    model->setGridSpacing(hy,1);
     model->setCFL(CFL);
     
     // set write data info
@@ -111,34 +119,55 @@ int main(int argc, char ** argv)
     // initialize solution vectors
     model->initModel();
     
-    // set physical properties
+    // set material properties
     ConstantSource * unit  = new ConstantSource(1.0);
-    model->setSource("rho", unit,true);
-    model->setSource("K", unit,true);
-    model->setSource("Cp", unit,true);
+    ConstantSource * zero = new ConstantSource(0.0);
+    data->setSource("mu", unit,true);
+    data->setSource("pressure", zero,true);
     
-    // set boundary conditions
-    double Tinit = 500;
-    double T_amb = 300;
-    double hc = -1.0;
-    double insulation = 0;
+    // set boundary conditions for flow model
+    dirchletBoundaryCondition * u_in = new dirchletBoundaryCondition(1);
+    dirchletBoundaryCondition * wall = new dirchletBoundaryCondition(0);
+    neumannBoundaryCondition * outflow_x = new neumannBoundaryCondition(0,hx);
+    neumannBoundaryCondition * outflow_y = new neumannBoundaryCondition(0,hy);
     
-    dirchletBoundaryCondition * fixed = new dirchletBoundaryCondition(Tinit);
-    convectiveCooling * cooling_SN = new convectiveCooling(hc,T_amb,hy);
-    convectiveCooling * cooling_E = new convectiveCooling(hc,T_amb,hx);
-    model->setBoundaryConditions({fixed,cooling_SN,cooling_E,cooling_SN});
+    model->setBoundaryConditions("u", {u_in,wall,outflow_x,wall});
+    model->setBoundaryConditions("v", {wall,wall,outflow_x,wall});
     
-    // set velocity components
-    ConstantSource * u = new ConstantSource(-10);
-    ConstantSource * v = new ConstantSource(20);
+    // set velocity components (as a source)
+    RadialSource2D * u = new RadialSource2D(0.5, 0.5, 4.0, 0);
+    RadialSource2D * v = new RadialSource2D(0.5, 0.5, 4.0, 1);
     ConstantSource * w = new ConstantSource(0);
-    model->setSource("u", u,true);
-    model->setSource("v", v,true);
-    model->setSource("w", w,true);
+    data->setSource("u", u);
+    data->setSource("v", v);
+    data->setSource("w", w, true);
+    
+    // set initial condition on velocity
+    ConstantSource * ic = new ConstantSource(0);
+    model->addICName("u", "ic u");
+    model->addICName("v", "ic v");
+    data->setSource("ic u",ic);
+    data->setSource("ic v",ic);
+    
+    // set up mass transport model
+    FDTransport * mass = dynamic_cast<FDTransport *>(model->getModel("mass transport"));
+    mass->setBoundaryConditions({outflow_x, outflow_y, outflow_x, outflow_y});
+    
+    // set up intial conditions
+    GaussianSource * gauss = new GaussianSource(0.6,0.6,0.1,0.1,5.0);
+    string mass_ic_name = "mass IC";
+    mass->setICName(mass_ic_name);
+    data->setSource(mass_ic_name, gauss);
+    
+    // set up energy model
+    FDHeatTransfer * heat = dynamic_cast<FDHeatTransfer *>(model->getModel("energy"));
+    heat->setBoundaryConditions({outflow_x, outflow_y, outflow_x, outflow_y});
     
     // set initial condition
-    ConstantSource * ic = new ConstantSource(Tinit);
-    model->setSource("initial condition",ic,true);
+    ConstantSource * Tinit = new ConstantSource(300);
+    string heat_ic_name = "heat IC";
+    heat->setICName(heat_ic_name);
+    data->setSource(heat_ic_name, Tinit);
     
     // set IC
     if(rank == 0) printf("Applying initial conditions...\n");
@@ -169,17 +198,21 @@ int main(int argc, char ** argv)
     }
     
     // clean up
-    delete model;
     delete unit;
-    
+    delete zero;
     delete u;
     delete v;
     delete w;
-    
-    delete fixed;
-    delete cooling_E;
-    delete cooling_SN;
+    delete u_in;
+    delete wall;
+    delete outflow_x;
+    delete outflow_y;
     delete ic;
+    delete gauss;
+    delete Tinit;
+    delete model;
+    delete data;
+    delete grid;
     
     MPI_Finalize();
 }

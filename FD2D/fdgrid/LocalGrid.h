@@ -28,7 +28,7 @@ namespace FDGrid
     public:
         
         /// constructor
-        LocalGrid() : ij({0,0}),l_rows(0),l_cols(0), boundary_grid(false){}
+        LocalGrid() : ij({0,0}),l_rows(0),l_cols(0),hx(0),hy(0), hz(0),boundary_grid(false){}
         
         /// destructor
         ~LocalGrid(){};
@@ -76,7 +76,35 @@ namespace FDGrid
                 }
             }
         }
+        
+        // set the fixed grid spacing
+        void setCellIncrements(double hx, double hy, double hz = 0)
+        {
+            this->hx = hx;
+            this->hy = hy;
+            this->hz = hz;
+        }
+        
+        // initialize the coordinate arrays
+        void initCoordinates()
+        {
+            size_t idx, i, j;
+            int els = this->getNumberOfGridPoints();
+            // initialize all data fields
+            this->x.resize(els);
+            this->y.resize(els);
             
+            for (i = 0; i <= l_rows; i++) {
+                for(j = 0; j <= l_cols; j++)
+                {
+                    idx = this->idxFromCoord(i,j);
+                    this->x[idx] = (ij.j + j)*this->hx;
+                    this->y[idx] = (ij.i + i)*this->hy;
+                }
+            }
+        }
+        
+        // set the corner point of this grid in the glocal partition
         void setGlobalCoordinate(int i, int j){ij.i = i, ij.j = j;}
         
         //getters
@@ -85,6 +113,18 @@ namespace FDGrid
         
         int getCols() const
         {return this->l_cols;};
+        
+        int getNumberOfGridPoints()
+        {
+            return (l_rows +1)*(l_cols +1);
+        }
+        
+        double& getX(size_t idx){return this->x[idx];}
+        double& getY(size_t idx){return this->y[idx];}
+
+        double get_hx(){return this->hx;}
+        double get_hy(){return this->hy;}
+        double get_hz(){return this->hz;}
         
         int getColor() const
         {return this->color;};
@@ -103,14 +143,15 @@ namespace FDGrid
         
         struct FDUtils::Point2d ij; // coordinate of local grid in global space
         
-        int l_rows,
-        l_cols; // cells in  domain
-        
+        int l_rows, l_cols; // cells in  domain
+        double hx, hy, hz; // uniform grid spacing
         int color; // local process color
-        
         bool boundary_grid;
         
         vector<int> neighbors; // neibors list (w,s,e,n)
+        
+        vector<double> x; // coordinates
+        vector<double> y;
                 
     };
     

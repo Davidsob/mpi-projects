@@ -10,6 +10,7 @@
 #include <LocalGrid.h>
 
 #include <FDTransport.h>
+#include <FDDataManager.h>
 
 #define MIN(A,B) A < B ? A : B
 
@@ -53,7 +54,7 @@ int main(int argc, char ** argv)
     int Ny = divy+1;
     
     // Partition Global Grid
-    FDTransport * model = new FDTransport(2);
+    LocalGrid * grid = new LocalGrid;
 
     vector<LocalGrid> mesh;
     vector<int> all_neighbors;
@@ -78,7 +79,7 @@ int main(int argc, char ** argv)
     
     //  // scatter local grids
     MPI_Scatter(grids.data(),sizeof(LocalGrid),MPI_BYTE,
-                model->getGrid(), sizeof(LocalGrid),MPI_BYTE,
+                grid, sizeof(LocalGrid),MPI_BYTE,
                 0,MPI_COMM_WORLD);
     
     //  // scatter neighbor info to local grids
@@ -86,19 +87,25 @@ int main(int argc, char ** argv)
     MPI_Scatter(all_neighbors.data(),4*sizeof(int),MPI_BYTE,
                 tmp.data(), 4*sizeof(int),MPI_BYTE,0,MPI_COMM_WORLD);
     
-    // set up model grid
-    model->getGrid()->setNeighbors(tmp);
+    // finish set up of grid
+    double hx = 1.0/(Nx - 1.0) , hy = 1.0/(Ny - 1.0);
+    grid->setCellIncrements(hx, hy); // set spacing
+    grid->initCoordinates(); // set coordinates
+    grid->setNeighbors(tmp); // set neihbors
+    
     MPI_Barrier(MPI_COMM_WORLD);
 
-    // set up model
-    // Courant number
-    double CFL = 0.1;
-    double t_end = 5.0;
-    double hx = 1.0/(Nx-1.0) , hy = 1.0/(Ny - 1.0);
+    // set up data manager
+    FDDataManager * data = new FDDataManager(grid->getNumberOfGridPoints());
     
+    // set up model
+    double CFL = 0.075;
+    double t_end = 5.0;
+    
+    FDTransport * model = new FDTransport("density", 2);
+    model->setGrid(grid);
+    model->setDataManager(data);
     model->setEndTime(t_end);
-    model->setGridSpacing(hx,0);
-    model->setGridSpacing(hy,1);
     model->setCFL(CFL);
     
     // set write data info
@@ -117,16 +124,18 @@ int main(int argc, char ** argv)
     model->setBoundaryConditions({noflux_WE,noflux_SN,noflux_WE,noflux_SN});
     
     // set velocity components
-    RadialSource2D * u = new RadialSource2D(0.5,0.5,2.0,0);
-    RadialSource2D * v = new RadialSource2D(0.5,0.5,2.0,1);
+    RadialSource2D * u = new RadialSource2D(0.5,0.5,4.0,0);
+    RadialSource2D * v = new RadialSource2D(0.5,0.5,4.0,1);
     ConstantSource * w = new ConstantSource(0);
-    model->setSource("u", u,true);
-    model->setSource("v", v,true);
-    model->setSource("w", w,true);
+    data->setSource("u", u,true);
+    data->setSource("v", v,true);
+    data->setSource("w", w,true);
     
     // set initial condition
     GaussianSource * ic  = new GaussianSource(0.9,0.5,0.1,0.1,2.0);
-    model->setSource("initial condition", ic);
+    string ic_name = "IC";
+    model->setICName(ic_name);
+    data->setSource(ic_name, ic);
     
     // set IC
     if(rank == 0) printf("Applying initial conditions...\n");
@@ -156,15 +165,14 @@ int main(int argc, char ** argv)
     }
     
     // clean up
-    delete model;
-    
-    delete u;
-    delete v;
-    delete w;
-    
     delete noflux_SN;
     delete noflux_WE;
     delete ic;
-    
+//    delete u;
+//    delete v;
+//    delete w;
+    delete model;
+    delete data;
+    delete grid;
     MPI_Finalize();
 }

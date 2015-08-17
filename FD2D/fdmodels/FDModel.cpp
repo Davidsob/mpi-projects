@@ -50,26 +50,46 @@ double FDModel::calculateDivergence(const FDUtils::Stencil &u,
                                     const FDUtils::Stencil &w)
 {
     double div = 0;
-    if(this->dim >= 0)
-        div += (u.E - u.W)/this->hx/2.0;
-    
     if(this->dim >= 1)
-        div += (v.N - v.S)/this->hy/2.0;
+        div += (u.E - u.W)/this->grid->get_hx()/2.0;
     
     if(this->dim >= 2)
-        div += (w.T - w.B)/this->hz/2.0;
+        div += (v.N - v.S)/this->grid->get_hy()/2.0;
+    
+    if(this->dim >= 3)
+        div += (w.T - w.B)/this->grid->get_hz()/2.0;
     
     return div;
 }
 
 double FDModel::calculatePartialDerivative(const FDUtils::Stencil &U, int dim)
 {
-    if(this->dim >= 0)
-        return (U.E - U.W)/this->hx/2.0;
+    if(this->dim == 0)
+        return (U.E - U.W)/this->grid->get_hx()/2.0;
     
-    if(this->dim >= 1)
-        return (U.N - U.S)/this->hy/2.0;
+    if(this->dim == 1)
+        return (U.N - U.S)/this->grid->get_hy()/2.0;
     
-    if(this->dim >= 2)
-        return (U.T - U.B)/this->hz/2.0;
+    if(this->dim == 2)
+        return (U.T - U.B)/this->grid->get_hz()/2.0;
+    
+    return 0.0;
+}
+
+void FDModel::updateSources()
+{
+    // initialize all data fields
+    double x, y;
+    for (size_t idx = 0; idx < this->grid->getNumberOfGridPoints(); idx++) {
+        
+        x = this->grid->getX(idx);
+        y = this->grid->getY(idx);
+        
+        for(auto p : this->data_manager->availableSources())
+        {
+            if(this->data_manager->hasData(p))
+                this->data_manager->getData(p)[idx] =
+                this->data_manager->getSource(p)->operator()(x, y, 0, this->t);
+        }
+    }
 }

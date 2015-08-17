@@ -5,6 +5,7 @@ add_subdirectory(fdgrid)
 add_subdirectory(fdutils)
 add_subdirectory(boundaryConditions)
 add_subdirectory(fdmodels)
+add_subdirectory(fddatamanager)
 
 include_directories(
 fdgrid
@@ -12,6 +13,7 @@ fdsources
 fdutils
 boundaryConditions
 fdmodels
+fddatamanager
 /usr/local/include/
 )
 
@@ -20,6 +22,7 @@ fdGrids
 fdutils
 boundaryConditions
 models
+fddata
 )
 
 # set the executable

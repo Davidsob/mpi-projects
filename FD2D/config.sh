@@ -8,7 +8,7 @@ MPI_PATH=/opt/local/bin
 cmake \
     -DCMAKE_CXX_COMPILER:PATH=$MPI_PATH/mpicxx \
     -DCMAKE_C_COMPILER:PATH=$MPI_PATH/mpicc \
-    -DCMAKE_CXX_FLAGS:STRING='-Wall -fPIC -pipe -std=c++11 -stdlib=libc++' \
-    -DCMAKE_C_FLAGS:STRING='-fPIC -pipe -Wall' \
+    -DCMAKE_CXX_FLAGS:STRING='-Wall -fPIC -pipe -std=c++11 -stdlib=libc++ -Wno-overloaded-virtual' \
+    -DCMAKE_C_FLAGS:STRING='-fPIC -pipe -Wall -Wno-overloaded-virtual' \
 
 make -j8

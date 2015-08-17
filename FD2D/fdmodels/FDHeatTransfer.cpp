@@ -1,7 +1,7 @@
 #include "FDHeatTransfer.h"
 
-FDHeatTransfer::FDHeatTransfer(int dim)
-: FDModel(dim)
+FDHeatTransfer::FDHeatTransfer(string variable_name, int dim)
+: FDModel(dim), primary_variable(variable_name)
 {
     bcs = {nullptr,nullptr,nullptr,nullptr};
 }
@@ -14,20 +14,26 @@ FDHeatTransfer::~FDHeatTransfer()
 void FDHeatTransfer::initModel()
 {
     // set local storage
-    int local_els = (grid->getRows()+1)*(grid->getCols()+1);
+    int local_els = this->grid->getNumberOfGridPoints();
     vector<double> zeros(local_els,0);
-    this->setData("T", zeros);
-    this->setData("Tp", zeros);
+    this->data_manager->setData(primary_variable, zeros);
+    this->data_manager->setData(primary_variable+"p", zeros);
 }
 
 void FDHeatTransfer::applyBoundaryConditions(MPI_Comm comm)
 {
+    if(!this->grid->isBoundaryGrid())
+    {
+        printf("NO BOUNDARY GRID!!!\n");
+        return;
+    }
+    
     size_t i = 0;
     int local_rows = this->grid->getRows();
     int local_cols = this->grid->getCols();
     
     vector<int> nbr = this->grid->getNeighbors();
-    vector<double> &U = this->getData("T");
+    vector<double> &U = this->data_manager->getData(primary_variable);
     // set dirchlet
     if(nbr[0] == -1)
         for(i = 0; i <= local_rows; i++) this->bcs[0]->setBC(U[this->grid->idxFromCoord(i, 0)]);
@@ -43,7 +49,11 @@ void FDHeatTransfer::applyBoundaryConditions(MPI_Comm comm)
 
 void FDHeatTransfer::updateBoundaryConditions(vector<vector<double>> &nbrs_data, MPI_Comm comm)
 {
-    if(!this->grid->isBoundaryGrid()) return;
+    if(!this->grid->isBoundaryGrid())
+    {
+        printf("NO BOUNDARY GRID!!!\n");
+        return;
+    }
     
     const vector<int> &nbrs = this->grid->getNeighbors();
     
@@ -53,7 +63,8 @@ void FDHeatTransfer::updateBoundaryConditions(vector<vector<double>> &nbrs_data,
         {
             if(this->bcs[i]->getName() == "convectiveCooling")
             {
-                vector<double> boundary_u = this->grid->getBoundaryValues(FDUtils::GRID_DIRECTION(i), getData("T"));
+                vector<double> boundary_u = this->grid->getBoundaryValues(FDUtils::GRID_DIRECTION(i),
+                                                                          this->data_manager->getData(primary_variable));
                 dynamic_cast<convectiveCooling *>(bcs[i])->updateBC(nbrs_data[i], boundary_u);
             }else{
                 this->bcs[i]->updateBC(nbrs_data[i]);
@@ -64,32 +75,23 @@ void FDHeatTransfer::updateBoundaryConditions(vector<vector<double>> &nbrs_data,
 
 void FDHeatTransfer::applyInitialConditions(MPI_Comm comm)
 {
-    if (!hasSource("initial condition")) return;
+    if (!this->data_manager->hasSource(initial_condition)) return;
     // want to get left and right values from neihbors
     int rank , nproc;
     MPI_Comm_size(comm, &nproc);
     MPI_Comm_rank(comm, &rank);
     
-    // get local informaion
-    int local_rows = this->grid->getRows();
-    int local_cols = this->grid->getCols();
-    Point2d local_ij = this->grid->getLocalCoordinate();
-    
-    size_t i, j, idx;
-    double x,y;
-    
     // 1 set initial Temperature at 0
-    vector<double> &U = getData("T");
-    PhysicalSource * ic = getSource("initial condition");
-    for (i = 0; i <= local_rows; i++) {
-        for(j = 0; j <= local_cols; j++)
-        {
-            idx = this->grid->idxFromCoord(i,j);
-            x = (local_ij.j + j)*this->hx;
-            y = (local_ij.i + i)*this->hy;
-            U[idx] = ic->operator()(x, y, 0, this->t_start);;
-        }
+    vector<double> &U = this->data_manager->getData(primary_variable);
+    PhysicalSource * ic = this->data_manager->getSource(initial_condition);
+    double x,y;
+    for (int idx = 0; idx < this->grid->getNumberOfGridPoints(); idx++) {
+        
+        x = this->grid->getX(idx);
+        y = this->grid->getY(idx);
+        U[idx] = ic->operator()(x, y, 0, this->t_start);;
     }
+    
     
     MPI_Barrier(comm);
 }
@@ -97,9 +99,11 @@ void FDHeatTransfer::applyInitialConditions(MPI_Comm comm)
 double FDHeatTransfer::calculateDiffusion(const FDUtils::Stencil &T, const FDUtils::Stencil &K)
 {
     double diff = 0.0;
+   
     if(this->dim >= 1)
     {
-        double rxsq = 1.0/this->hx/this->hx;
+        double hx = this->grid->get_hx();
+        double rxsq = 1.0/pow(hx, 2);
         double d2x =  FDUtils::arithemeticMean(K.E,K.O)*(T.E - T.O) -
         FDUtils::arithemeticMean(K.W, K.O)*(T.O - T.W);
         diff += rxsq * d2x;
@@ -107,7 +111,8 @@ double FDHeatTransfer::calculateDiffusion(const FDUtils::Stencil &T, const FDUti
     
     if(this->dim >= 2)
     {
-        double rysq = 1.0/this->hy/this->hy;
+        double hy = this->grid->get_hy();
+        double rysq = 1.0/pow(hy, 2);
         double d2y = FDUtils::arithemeticMean(K.N,K.O)*(T.N - T.O) -
         FDUtils::arithemeticMean(K.S, K.O)*(T.O - T.S);
         diff += rysq * d2y;
@@ -115,7 +120,8 @@ double FDHeatTransfer::calculateDiffusion(const FDUtils::Stencil &T, const FDUti
     
     if(this->dim == 3)
     {
-        double rzsq = 1.0/this->hz/this->hz;
+        double hz = this->grid->get_hz();
+        double rzsq = 1.0/pow(hz, 2);
         double d2z = FDUtils::arithemeticMean(K.T,K.O)*(T.T - T.O) -
         FDUtils::arithemeticMean(K.B, K.O)*(T.O - T.B);
         diff += rzsq * d2z;
@@ -133,26 +139,27 @@ double FDHeatTransfer::calculateAdvection(const FDUtils::Stencil &T,
     double advection = 0;
     if(this->dim >= 0)
     {
-        if(u.O >= 0)
-            advection += u.O * (T.O - T.W)/this->hx;
+        
+        if(u.O >= 1)
+            advection += u.O * (T.O - T.W)/this->grid->get_hx();
         else
-            advection += u.O * (T.E - T.O)/this->hx;
-    }
-    
-    if(this->dim >= 1)
-    {
-        if(v.O >= 0)
-            advection += v.O * (T.O - T.S)/this->hy;
-        else
-            advection += v.O * (T.N - T.O)/this->hy;
+            advection += u.O * (T.E - T.O)/this->grid->get_hx();
     }
     
     if(this->dim >= 2)
     {
-        if(w.O >= 0)
-            advection += w.O * (T.O - T.B)/this->hz;
+        if(v.O >= 0)
+            advection += v.O * (T.O - T.S)/this->grid->get_hy();
         else
-            advection += w.O * (T.T - T.O)/this->hz;
+            advection += v.O * (T.N - T.O)/this->grid->get_hy();
+    }
+    
+    if(this->dim >= 3)
+    {
+        if(w.O >= 0)
+            advection += w.O * (T.O - T.B)/this->grid->get_hz();
+        else
+            advection += w.O * (T.T - T.O)/this->grid->get_hz();
     }
     
     advection += T.O * this->calculateDivergence(u,v,w);
@@ -172,38 +179,17 @@ void FDHeatTransfer::solve(MPI_Comm comm)
     MPI_Comm_size(comm, &nproc);
     MPI_Comm_rank(comm, &rank);
     
-    size_t i, j, idx, step_no = 0;
+    size_t step_no = 0;
     // write initial solution
     this->write(comm);
     
-    // get local informaion
-    int local_rows = this->grid->getRows();
-    int local_cols = this->grid->getCols();
-    Point2d local_ij = this->grid->getLocalCoordinate();
-    
-    // initialize all data fields
-    double x,y;
-    for (i = 0; i <= local_rows; i++) {
-        for(j = 0; j <= local_cols; j++)
-        {
-            idx = this->grid->idxFromCoord(i,j);
-            x = (local_ij.j + j)*this->hx;
-            y = (local_ij.i + i)*this->hy;
-            
-            for(auto p : this->sources)
-            {
-                if(hasData(p.first))
-                    getData(p.first)[idx] = p.second->operator()(x, y, 0, this->t);
-            }
-        }
-    }
-    
     MPI_Barrier(comm);
-
     // begin solve
-    double dt = this->getTimeStep();
+    double dt = this->getTimeStep(comm);
+    if(rank == 0) printf("time step: %f[s]\n", dt);
     while (this->t <= this->t_end) {
         step_no++;
+        this->updateSources();
         this->t += dt;
         if(rank == 0) printf("begin step: %lu, time: %f[s]\n",step_no, this->t);
         
@@ -218,17 +204,19 @@ void FDHeatTransfer::solve(MPI_Comm comm)
 
 void FDHeatTransfer::advanceSolution(double dt,MPI_Comm comm)
 {
+    
     // share data
-    for (auto p : this->data)
-        FDModel::getDataFromNeighbors(getData(p.first), getSharedData(p.first), comm);
+    for (auto p : this->data_manager->availableData())
+        FDModel::getDataFromNeighbors(this->data_manager->getData(p),
+                                      this->data_manager->getSharedData(p), comm);
     
     // update boundary conditions
-    this->updateBoundaryConditions(getSharedData("T"),comm);
+    this->updateBoundaryConditions(this->data_manager->getSharedData(primary_variable),comm);
     MPI_Barrier(comm);
     
     
-    vector<double> &Up = getData("Tp");
-    vector<double> &U = getData("T");
+    vector<double> &Up = this->data_manager->getData(primary_variable + "p");
+    vector<double> &U = this->data_manager->getData(primary_variable);
     double source = 0;
     size_t idx;
     Point2d ij{0,0};
@@ -241,20 +229,35 @@ void FDHeatTransfer::advanceSolution(double dt,MPI_Comm comm)
         {
             ij.i = i; ij.j = j;
     
-            for (auto p : this->stencils)
+            for (auto p : this->data_manager->availableData())
             {
-                this->grid->stencilPoints(ij, getData(p.first), getSharedData(p.first), getStencil(p.first));
+                this->grid->stencilPoints(ij,
+                                          this->data_manager->getData(p),
+                                          this->data_manager->getSharedData(p),
+                                          this->data_manager->getStencil(p));
             }
             
             /// diffusion term
-            Stencil T = getStencil("T");
-            source = this->calculateDiffusion(T,getStencil("K"));
-            /// advection term
-            if(hasSource("u") || hasSource("v")|| hasSource("w"))
-                source += this->calculateAdvection(T,getStencil("u"),getStencil("v"),getStencil("w"));
+            Stencil T = this->data_manager->getStencil(primary_variable);
+            source = this->calculateDiffusion(T,this->data_manager->getStencil("K"));
             
-            if(hasSource("pressure"))
-                source += this->calculateDeformationEnergy(T,getStencil("pressure"));
+            /// advection term
+            if(this->data_manager->hasData("u") ||
+               this->data_manager->hasData("v")||
+               this->data_manager->hasData("w"))
+            {
+                source += this->calculateAdvection(
+                                                   T,
+                                                   this->data_manager->getStencil("u"),
+                                                   this->data_manager->getStencil("v"),
+                                                   this->data_manager->getStencil("w")
+                                                   );
+            }
+            
+            
+            // pressure term
+            if(this->data_manager->hasSource("pressure"))
+                source += this->calculateDeformationEnergy(T,this->data_manager->getStencil("pressure"));
             
             idx = this->grid->idxFromCoord(i , j);
 
@@ -262,11 +265,7 @@ void FDHeatTransfer::advanceSolution(double dt,MPI_Comm comm)
             
         }
     }
-//    size_t k = 0;
-//    for(double ui : U)
-//    {
-//        printf("U[%d] = %f, Up[%k] = %f\n",k, ui,k, Up[k++]);
-//    }
+    
     U = Up;
 }
 
@@ -285,24 +284,10 @@ void FDHeatTransfer::write(MPI_Comm comm)
     ofstream file;
     file.open(this->output_path + string(title));
     
+    vector<double> &U = this->data_manager->getData(primary_variable);
     
-    double x,y;
-    int idx;
-    int i,j;
-    Point2d local_ij = this->grid->getLocalCoordinate();
-    int rows = this->grid->getRows();
-    int cols = this->grid->getCols();
-    vector<double> &U = getData("T");
-    
-    for (i = 0; i <= rows; i++) {
-        for(j = 0; j <= cols; j++)
-        {
-            idx = this->grid->idxFromCoord(i, j);
-            x = (local_ij.j + j)*this->hx;
-            y = (local_ij.i + i)*this->hy;
-            file << x << "\t" << y << "\t" << U[idx] <<"\n";
-        }
-    }
+    for (size_t idx = 0; idx < this->grid->getNumberOfGridPoints(); idx++)
+        file << this->grid->getX(idx) << "\t" << this->grid->getY(idx)  << "\t" << U[idx] <<"\n";
     
     file.close();
     
@@ -320,8 +305,10 @@ void FDHeatTransfer::write(MPI_Comm comm)
     }
 }
 
-double FDHeatTransfer::getTimeStep()
+double FDHeatTransfer::getTimeStep(MPI_Comm comm)
 {
-    return MIN(this->hx*this->hx, this->hy*this->hy)*this->CFL;
+    double hx = this->grid->get_hx();
+    double hy = this->grid->get_hy();
+    return MIN(hx*hx, hy*hy)*this->CFL;
 }
 

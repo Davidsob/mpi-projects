@@ -3,9 +3,9 @@
 #include "FDModel.h"
 
 class FDHeatTransfer : public FDModel{
-
-  public:
-    FDHeatTransfer(int dim = 0);  
+    
+public:
+    FDHeatTransfer(string variable_name = "temperature", int dim = 0);
     virtual ~FDHeatTransfer();
     
     virtual void initModel();
@@ -19,9 +19,12 @@ class FDHeatTransfer : public FDModel{
     virtual void advanceSolution(double dt,MPI_Comm comm);
     virtual void solve(MPI_Comm comm);
     virtual void write(MPI_Comm comm);
-    virtual double getTimeStep();
+    virtual double getTimeStep(MPI_Comm comm);
+    void setICName(const string &ic_name){this->initial_condition = ic_name;}
     
-  private:
+private:
+    string primary_variable;
+    string initial_condition;
     
     double calculateDiffusion(const FDUtils::Stencil &T, const FDUtils:: Stencil &K);
     double calculateAdvection(const FDUtils::Stencil &T,
@@ -32,4 +35,4 @@ class FDHeatTransfer : public FDModel{
     double calculateDeformationEnergy(const FDUtils::Stencil &T,const FDUtils::Stencil &p);
     
     vector<boundaryCondition *> bcs;
-    };
+};
