@@ -2,8 +2,8 @@
 
 rm -rf CMakeFiles *Cache.txt *.cmake
 
-#MPI_PATH=/scr_davidson/davidson/contrib/mpich/bin
-MPI_PATH=/opt/local/bin
+MPI_PATH=/scr_davidson/davidson/contrib/mpich/bin
+#MPI_PATH=/opt/local/bin
 
 cmake \
     -DCMAKE_CXX_COMPILER:PATH=$MPI_PATH/mpicxx \
