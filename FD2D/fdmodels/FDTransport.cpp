@@ -262,14 +262,18 @@ double FDTransport::calculateMaxU()
     vector<double> &w = this->data_manager->getData("w");
     
     double mx = -DBL_MAX;
-    double S;
+    double S = 0;
     size_t k = 0;
-    for(double ui : u)
+    for(; k < this->grid->getNumberOfGridPoints();k++)
     {
-        S = sqrt(pow(ui, 2) + pow(v[k], 2) + pow(w[k], 2));
-        k++;
+        S = sqrt(u[k]*u[k] + v[k]*v[k] + w[k]*w[k]);
         if(S > mx) mx = S;
     }
+//    
+//    printf("\n\nvelocity:[");
+//    for(size_t idx = 0; idx < this->grid->getNumberOfGridPoints(); idx++)
+//        printf("{%1.2f, %1.2f, %1.2f}\n ", u[idx],v[idx], w[idx]);
+    
     return mx;
 }
 
@@ -281,7 +285,7 @@ double FDTransport::getTimeStep(MPI_Comm comm)
     MPI_Barrier(comm);
     MPI_Allreduce(&local_max, &maxU, 1, MPI_DOUBLE, MPI_MAX,comm);
     if(maxU == 0) maxU = 1.0;
-    
+//    printf("max U = %f[m/s]\n", maxU);
     return MIN(this->grid->get_hx()/maxU, this->grid->get_hy()/maxU)*this->CFL;
 }
 

@@ -4,7 +4,7 @@
 echo "begin deep clean of project's build files"
 
 make clean
-rm -rf CMakeFiles *Cache.txt *.cmake *.xcode* *.build Debug *.a
+rm -rf CMakeFiles *Cache.txt *.cmake *.xcode* *.build Debug *.a CMakeScripts
 
 built_dirs="
 fddatamanager \
@@ -18,7 +18,7 @@ boundaryConditions
 for d in $built_dirs; do
 echo "...cleaning $d ..."
 cd ./$d
-rm -rf CMakeFiles *Cache.txt *.cmake *.xcode* *.build Debug *.a MakeFile
+rm -rf CMakeFiles *Cache.txt *.cmake *.xcode* *.build Debug *.a MakeFile CMakeScripts
 cd ../
 done
 

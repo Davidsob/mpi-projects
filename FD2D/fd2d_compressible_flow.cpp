@@ -21,7 +21,7 @@ using namespace FDSource;
 using namespace FDGrid;
 using namespace FDUtils;
 
-static const string saveto = "/Users/davidson/mpi-projects/FD2D";
+static const string saveto = "/Users/LNLB/mpi-projects/FD2D";
 
 void writeGridPartition(const vector<LocalGrid> & parts)
 {
@@ -49,14 +49,14 @@ int main(int argc, char ** argv)
     int rank, nproc;
     getWorldInfo(MPI_COMM_WORLD,rank,nproc);
     
-    int divx = 20;
-    int divy = 20;
+    int divx = 30;
+    int divy = 30;
     int Nx = divx+1;
     int Ny = divy+1;
     
     // Partition Global Grid
     LocalGrid * grid = new LocalGrid;
-
+    
     vector<LocalGrid> mesh;
     vector<int> all_neighbors;
     vector<LocalGrid>grids;
@@ -98,11 +98,11 @@ int main(int argc, char ** argv)
     
     // set up data manager
     FDDataManager * data = new FDDataManager(grid->getNumberOfGridPoints());
-
+    
     // set up model
     // Courant number
     double CFL = 0.05;
-    double t_end = 1.0;
+    double t_end = 0.5;
     
     FDCompressibleFlow * model = new FDCompressibleFlow({"u", "v"}, 2);
     model->setGrid(grid);
@@ -113,7 +113,7 @@ int main(int argc, char ** argv)
     // set write data info
     model->setOuputFilePath(saveto + "/solutions/");
     model->setFileName("u.dat");
-    model->setWriteEveryNthStep(20);
+    model->setWriteEveryNthStep(25);
     MPI_Barrier(MPI_COMM_WORLD);
     
     // initialize solution vectors
@@ -135,19 +135,20 @@ int main(int argc, char ** argv)
     model->setBoundaryConditions("v", {wall,wall,outflow_x,wall});
     
     // set velocity components (as a source)
-//    RadialSource2D * u = new RadialSource2D(0.5, 0.5, 4.0, 0);
-//    RadialSource2D * v = new RadialSource2D(0.5, 0.5, 4.0, 1);
+    //    RadialSource2D * u = new RadialSource2D(0.5, 0.5, 4.0, 0);
+    //    RadialSource2D * v = new RadialSource2D(0.5, 0.5, 4.0, 1);
     ConstantSource * w = new ConstantSource(0);
-//    data->setSource("u", u);
-//    data->setSource("v", v);
+    //    data->setSource("u", u);
+    //    data->setSource("v", v);
     data->setSource("w", w, true);
-  
+    
     // set initial condition on velocity
-    ConstantSource * ic = new ConstantSource(0);
+    ConstantSource * icu = new ConstantSource(1.0);
+    ConstantSource * icv = new ConstantSource(0.0);
     model->addICName("u", "ic u");
     model->addICName("v", "ic v");
-    data->setSource("ic u",ic);
-    data->setSource("ic v",ic);
+    data->setSource("ic u",icu);
+    data->setSource("ic v",icv);
     
     // set up mass transport model
     FDTransport * mass = dynamic_cast<FDTransport *>(model->getModel("mass transport"));
@@ -161,8 +162,10 @@ int main(int argc, char ** argv)
     
     // set up energy model
     FDHeatTransfer * heat = dynamic_cast<FDHeatTransfer *>(model->getModel("energy"));
-    ConstantSource * thermal_conduct  = new ConstantSource(100.0);
+    ConstantSource * thermal_conduct  = new ConstantSource(1.0);
+    ConstantSource * specific_heat  = new ConstantSource(1.0);
     data->setSource("K", thermal_conduct,true);
+    data->setSource("Cp", specific_heat,true);
     heat->setBoundaryConditions({outflow_x, outflow_y, outflow_x, outflow_y});
     
     // set initial condition
@@ -200,17 +203,19 @@ int main(int argc, char ** argv)
     }
     
     // clean up
-  delete thermal_conduct;
+    delete specific_heat;
+    delete thermal_conduct;
     delete unit;
     delete zero;
-//    delete u;
-//    delete v;
+    //    delete u;
+    //    delete v;
     delete w;
     delete u_in;
     delete wall;
     delete outflow_x;
     delete outflow_y;
-    delete ic;
+    delete icu;
+    delete icv;
     delete gauss;
     delete Tinit;
     delete model;

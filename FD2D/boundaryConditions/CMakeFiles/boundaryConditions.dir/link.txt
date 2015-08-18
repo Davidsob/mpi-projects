@@ -1,2 +1,0 @@
-/opt/local/bin/ar cr libboundaryConditions.a  CMakeFiles/boundaryConditions.dir/dirchletBoundaryCondition.cpp.o CMakeFiles/boundaryConditions.dir/neumannBoundaryCondition.cpp.o CMakeFiles/boundaryConditions.dir/convectiveCooling.cpp.o
-/opt/local/bin/ranlib libboundaryConditions.a

@@ -1,2 +1,0 @@
-/opt/local/bin/ar cr libmodels.a  
-/opt/local/bin/ranlib libmodels.a

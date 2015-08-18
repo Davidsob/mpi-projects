@@ -103,7 +103,7 @@ double FDHeatTransfer::calculateDiffusion(const FDUtils::Stencil &T, const FDUti
   if(this->dim >= 1)
   {
     double hx = this->grid->get_hx();
-    double rxsq = 1.0/pow(hx, 2);
+    double rxsq = 1.0/hx/hx;
     double d2x =  FDUtils::arithemeticMean(K.E,K.O)*(T.E - T.O) -
     FDUtils::arithemeticMean(K.W, K.O)*(T.O - T.W);
     diff += rxsq * d2x;
@@ -112,7 +112,7 @@ double FDHeatTransfer::calculateDiffusion(const FDUtils::Stencil &T, const FDUti
   if(this->dim >= 2)
   {
     double hy = this->grid->get_hy();
-    double rysq = 1.0/pow(hy, 2);
+    double rysq = 1.0/hy/hy;
     double d2y = FDUtils::arithemeticMean(K.N,K.O)*(T.N - T.O) -
     FDUtils::arithemeticMean(K.S, K.O)*(T.O - T.S);
     diff += rysq * d2y;
@@ -121,7 +121,7 @@ double FDHeatTransfer::calculateDiffusion(const FDUtils::Stencil &T, const FDUti
   if(this->dim == 3)
   {
     double hz = this->grid->get_hz();
-    double rzsq = 1.0/pow(hz, 2);
+    double rzsq = 1.0/hz/hz;
     double d2z = FDUtils::arithemeticMean(K.T,K.O)*(T.T - T.O) -
     FDUtils::arithemeticMean(K.B, K.O)*(T.O - T.B);
     diff += rzsq * d2z;
@@ -185,14 +185,17 @@ double FDHeatTransfer::calculateViscousHeating()
   vector<double> sq(4,0);
   size_t k = 0;
   for(double &sqi : sq)
-    sqi = pow(tau_ij[k++],2);
+  {
+    sqi = tau_ij[k]*tau_ij[k];
+      k++;
+  }
   
   double sum = 0;
   for(double sqi : sq)
     sum += sqi;
   
   // calculate source term
-  double source = mu.O*(0.5*sum - 2.0/3.0*pow(divU.O,2));
+  double source = mu.O*(0.5*sum - 2.0/3.0*divU.O*divU.O);
   return source;
 }
 
@@ -289,13 +292,13 @@ void FDHeatTransfer::advanceSolution(double dt,MPI_Comm comm)
       {
         
         
-        if(this->data_manager->hasData("pressure"))
-        {
-          source -= this->data_manager->getStencil("pressure").O*this->data_manager->getStencil("divU").O;
-        }
-        
-        if(this->data_manager->hasData("mu"))
-          source += calculateViscousHeating();
+//        if(this->data_manager->hasData("pressure"))
+//        {
+//          source -= this->data_manager->getStencil("pressure").O*this->data_manager->getStencil("divU").O;
+//        }
+//        
+//        if(this->data_manager->hasData("mu"))
+//          source += calculateViscousHeating();
         
         double rho_cp_p = this->data_manager->getStencil("densityp").O * Cp.O;
         Up[idx] =  (rho_cp/rho_cp_p) * U[idx] + (dt/rho_cp_p) * source;

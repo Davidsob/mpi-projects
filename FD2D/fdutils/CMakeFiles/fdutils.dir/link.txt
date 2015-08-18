@@ -1,2 +1,0 @@
-/opt/local/bin/ar cr libfdutils.a  CMakeFiles/fdutils.dir/fdUtils.cpp.o
-/opt/local/bin/ranlib libfdutils.a

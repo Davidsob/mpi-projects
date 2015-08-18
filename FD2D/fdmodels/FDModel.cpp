@@ -64,13 +64,13 @@ double FDModel::calculateDivergence(const FDUtils::Stencil &u,
 
 double FDModel::calculatePartialDerivative(const FDUtils::Stencil &U, int dim)
 {
-    if(this->dim == 0)
+    if(dim == 0)
         return (U.E - U.W)/this->grid->get_hx()/2.0;
     
-    if(this->dim == 1)
+    if(dim == 1)
         return (U.N - U.S)/this->grid->get_hy()/2.0;
     
-    if(this->dim == 2)
+    if(dim == 2)
         return (U.T - U.B)/this->grid->get_hz()/2.0;
     
     return 0.0;

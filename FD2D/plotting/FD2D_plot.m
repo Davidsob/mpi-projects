@@ -16,7 +16,8 @@ nx = divx+1;
 ny = divy+1;
 hx = 1/divx;
 hy = 1/divy;
-dt = C*min(hx,hy);
+
+time = textread(strcat(path,'time.dat'));
 
 x = linspace(0,1,divx+1);
 y = linspace(0,1,divy+1);
@@ -27,7 +28,7 @@ dat = sprintf('%s%s%0.3d',path,filename,0);
 d = textread(dat);
 Z = reshape(d(:,3),nx,ny);
 h = surf(X,Y,Z);
-tit = sprintf('time: %2.4f\nCFL: %2.3f',0,C);
+tit = sprintf('time: %2.4f\nCFL: %2.3f',time(1),C);
 ht = title(tit);
 set(ht,'fontsize',20);
 daspect([1 1 1])

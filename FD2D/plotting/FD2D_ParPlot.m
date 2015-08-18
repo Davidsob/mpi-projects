@@ -37,13 +37,15 @@ figure(1)
 
 hndls = {parts,1};
 
+data_idx = 3;
+
 for i = 1:1:parts
     nr = partition(i,3)+1;
     nc = partition(i,4)+1;
     dat = data{i};
     X = reshape(dat(:,1),nc,nr);
     Y = reshape(dat(:,2),nc,nr);
-    Z = reshape(dat(:,3),nc,nr);
+    Z = reshape(dat(:,data_idx),nc,nr);
     
     if color_by_part ~= 1
         hndls{i} = surf(X,Y,Z);
@@ -89,17 +91,23 @@ end
 extents = ones(1,6);
 extents(1:2:end) = -max(abs(mins),abs(maxs));
 extents(2:2:end) = max(abs(mins),abs(maxs));
+
+if(extents(5) == extents(6))
+    extents(5) = extents(5)-1;
+    extents(6) = extents(6)+1;
+end
+
 axis([0 1 0 1 extents(5:6)]);
-% axis([0 1 0 1 300 750]);
+% axis([0 1 0 1 0 1e6]);
 %% make a movie!
 for i = 2:length(time)
-    pause(0.01);
+    pause(0.1);
     for j = 1:parts
         file = sprintf('%s%s%0.3d.proc_%d',path,filename,i-1,j-1);
         nr = partition(j,3)+1;
         nc = partition(j,4)+1;
         dat = textread(file);
-        Z = reshape(dat(:,3),nc,nr);
+        Z = reshape(dat(:,data_idx),nc,nr);
         set(hndls{j},'zdata',Z);
     end
     % plot the result

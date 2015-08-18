@@ -19,7 +19,7 @@ using namespace FDSource;
 using namespace FDGrid;
 using namespace FDUtils;
 
-static const string saveto = "/Users/davidson/mpi-projects/FD2D";
+static const string saveto = "/Users/LNLB/mpi-projects/FD2D";
 
 void writeGridPartition(const vector<LocalGrid> & parts)
 {
