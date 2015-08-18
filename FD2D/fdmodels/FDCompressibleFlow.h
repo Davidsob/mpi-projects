@@ -69,7 +69,6 @@ private:
     void calculatePressure();
     void calculateGridDivergence();
     void calculateMomentum();
-    double calculateMaxU();
     
     map<string, vector<boundaryCondition *>> bcs;
 };

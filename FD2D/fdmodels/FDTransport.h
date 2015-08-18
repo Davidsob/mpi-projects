@@ -26,7 +26,7 @@ private:
     string primary_variable;
     string initial_condition;
     
-    double calculateMaxU();
+    double calculate_min_dt();
     double calculateAdvection(const FDUtils::Stencil &U,
                               const FDUtils::Stencil &u,
                               const FDUtils::Stencil &v,

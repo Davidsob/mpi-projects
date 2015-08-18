@@ -22,7 +22,9 @@ public:
   virtual double getTimeStep(MPI_Comm comm);
   void setICName(const string &ic_name){this->initial_condition = ic_name;}
   void setCoupled(bool coupled){ this->coupled = coupled;}
+  
 private:
+  
   string primary_variable;
   string initial_condition;
   bool coupled;
