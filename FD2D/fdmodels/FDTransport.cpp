@@ -259,25 +259,17 @@ double FDTransport::calculate_min_dt()
 {
   vector<double> &u = this->data_manager->getData("u");
   vector<double> &v = this->data_manager->getData("v");
-  
-  vector<double> tmp;
-  vector<double> &w = tmp;
-  if(this->data_manager->hasData("w"))
-    w = this->data_manager->getData("w");
-  else
-  {
-    tmp = vector<double>(u.size(),0);
-    w = tmp;
-  }
-  
+  vector<double> &w = this->data_manager->getData("w");
+ 
   double hx = this->grid->get_hx();
   double hy = this->grid->get_hy();
   double hz = this->grid->get_hz();
   double min_dt = DBL_MAX, dt = 0;
-  
+  double fact;
   for(size_t k = 0; k < this->grid->getNumberOfGridPoints(); k++)
   {
-    dt = this->CFL / (u[k]/hx + v[k]/hy + w[k]/hz);
+    fact =  fabs(u[k]/hx + v[k]/hy + w[k]/hz);
+    dt = this->CFL /fact;
     if(dt < min_dt) min_dt = dt;
   }
   
@@ -291,7 +283,6 @@ double FDTransport::getTimeStep(MPI_Comm comm)
   double dt = 1.0;
   MPI_Barrier(comm);
   MPI_Allreduce(&local_dt, &dt, 1, MPI_DOUBLE, MPI_MIN,comm);
-  //    printf("max U = %f[m/s]\n", maxU);
   return fabs(dt) < 1e-8 ? 1e-8 : dt;
 }
 

@@ -20,7 +20,7 @@ using namespace FDSource;
 using namespace FDGrid;
 using namespace FDUtils;
 
-static const string saveto = "/Users/LNLB/mpi-projects/FD2D";
+static const string saveto = "/Users/davidson/mpi-projects/FD2D";
 
 void writeGridPartition(const vector<LocalGrid> & parts)
 {
@@ -99,7 +99,7 @@ int main(int argc, char ** argv)
     FDDataManager * data = new FDDataManager(grid->getNumberOfGridPoints());
     
     // set up model
-    double CFL = 0.075;
+    double CFL = 0.3;
     double t_end = 5.0;
     
     FDTransport * model = new FDTransport("density", 2);
@@ -168,9 +168,9 @@ int main(int argc, char ** argv)
     delete noflux_SN;
     delete noflux_WE;
     delete ic;
-//    delete u;
-//    delete v;
-//    delete w;
+    delete u;
+    delete v;
+    delete w;
     delete model;
     delete data;
     delete grid;
