@@ -28,7 +28,7 @@ namespace FDGrid
     public:
         
         /// constructor
-        LocalGrid() : ij({0,0}),l_rows(0),l_cols(0),hx(0),hy(0), hz(0),boundary_grid(false){}
+        LocalGrid() : ij({0,0}),l_rows(0),l_cols(0),hx(1),hy(1),hz(1),boundary_grid(false){}
         
         /// destructor
         ~LocalGrid(){};
@@ -78,7 +78,7 @@ namespace FDGrid
         }
         
         // set the fixed grid spacing
-        void setCellIncrements(double hx, double hy, double hz = 0)
+        void setCellIncrements(double hx, double hy, double hz = 1.0)
         {
             this->hx = hx;
             this->hy = hy;
