@@ -60,7 +60,7 @@ void FDTransport::updateBoundaryConditions(vector<vector<double>> &nbrs_data, MP
   
   const vector<int> &nbrs = this->grid->getNeighbors();
   vector<double> &U = this->data_manager->getData(primary_variable);
-    
+
   for(size_t i = 0; i < nbrs.size(); i++)
   {
     if(nbrs[i] == -1)
@@ -156,7 +156,7 @@ void FDTransport::solve(MPI_Comm comm)
     // advance time step
     this->t += dt;
     step_no++;
-    if(rank == 0) printf("begin step: %lu, time: %f[s]\n",step_no, this->t);
+    
     
     this->advanceSolution(dt, comm);
     
@@ -164,7 +164,10 @@ void FDTransport::solve(MPI_Comm comm)
     this->data_manager->getData(primary_variable) = this->data_manager->getData(primary_variable+"p");
     MPI_Barrier(comm);
     if((step_no % write_every) == 0 || this->t >= this->t_end)
+    {
+      if(rank == 0) printf("completed step: %lu, time: %f[s]\n",step_no, this->t);
       this->write(comm);
+    }
   }
   
 }
@@ -187,12 +190,12 @@ void FDTransport::advanceSolution(double dt, MPI_Comm comm)
   Point2d ij{0,0};
   int local_rows = this->grid->getRows();
   int local_cols = this->grid->getCols();
-  
   for(int i = 0; i <= local_rows; i++)
   {
     for(int j = 0; j <= local_cols; j++)
     {
       ij.i = i; ij.j = j;
+      
       
       for (auto p : this->data_manager->availableData())
         this->grid->stencilPoints(ij,
