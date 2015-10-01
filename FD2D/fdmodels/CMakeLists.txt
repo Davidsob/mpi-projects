@@ -3,6 +3,7 @@ FDModel.h
 FDHeatTransfer.h
 FDTransport.h
 FDCompressibleFlow.h
+FDCompressibleEuler.h
 )
 
 set(SOURCES
@@ -10,6 +11,7 @@ FDModel.cpp
 FDHeatTransfer.cpp
 FDTransport.cpp
 FDCompressibleFlow.cpp
+FDCompressibleEuler.cpp
 )
 
 include_directories(

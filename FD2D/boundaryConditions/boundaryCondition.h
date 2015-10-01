@@ -23,7 +23,7 @@ public:
     virtual ~boundaryCondition(){};
     virtual void updateBC(vector<double> &u_ghost)
     {
-        std::runtime_error("base boundary condition updateBC not implemented");
+//        std::runtime_error("base boundary condition updateBC not implemented");
     } // do nothing
     
     virtual void setBC(double &u){}; // by default do nothing

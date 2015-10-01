@@ -60,7 +60,7 @@ void FDTransport::updateBoundaryConditions(vector<vector<double>> &nbrs_data, MP
   
   const vector<int> &nbrs = this->grid->getNeighbors();
   vector<double> &U = this->data_manager->getData(primary_variable);
-  
+    
   for(size_t i = 0; i < nbrs.size(); i++)
   {
     if(nbrs[i] == -1)
@@ -88,13 +88,13 @@ void FDTransport::applyInitialConditions(MPI_Comm comm)
   PhysicalSource *ic =  this->data_manager->getSource(initial_condition);
   double x,y;
   for (int idx = 0; idx < this->grid->getNumberOfGridPoints(); idx++) {
-    
     x = this->grid->getX(idx);
     y = this->grid->getY(idx);
     U[idx] = ic->operator()(x, y, 0, this->t_start);;
   }
   
   MPI_Barrier(comm);
+
 }
 
 double FDTransport::calculateAdvection(const FDUtils::Stencil &U,
@@ -274,6 +274,7 @@ double FDTransport::calculate_min_dt()
   }
   
   return min_dt;
+
 }
 
 double FDTransport::getTimeStep(MPI_Comm comm)

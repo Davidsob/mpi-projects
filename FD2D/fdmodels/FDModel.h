@@ -28,11 +28,15 @@ class FDModel{
 
   public:
 
+    /* \brief base class constructor
+     * \param[in] dim is the dimension of the problem
+     */
     FDModel(int _dim = 0)
     : dim(_dim), CFL(1.0),
     t(0), t_start(0), t_end(0),
     write_every(1){};
     
+    /* \brief base class destructor */
     virtual ~FDModel(){
     }
     
@@ -66,6 +70,7 @@ class FDModel{
         this->grid = _grid;
     }
     
+    // set pointer to dat manager
     virtual void setDataManager(FDDataManager * dmngr){this->data_manager = dmngr;}
     
     void setOuputFilePath(const string &path){this->output_path = path;}

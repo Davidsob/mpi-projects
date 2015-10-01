@@ -19,19 +19,19 @@ namespace FDSource {
   class GaussianSource : public PhysicalSource{
     
   public:
-    GaussianSource(double xc, double yc, double sigx, double sigy, double A)
-    : xc(xc), yc(yc), sigx(sigx), sigy(sigy), A(A){}
+    GaussianSource(double xc, double yc, double sigx, double sigy, double A,double DC = 0.0)
+    : xc(xc), yc(yc), sigx(sigx), sigy(sigy), A(A), DC(DC){}
     
     ~GaussianSource(){};
     
     virtual double operator ()(double x, double y,double z, double t)
     {
-      double s = A*exp(-0.5*(pow((x-xc)/sigx, 2.0) + pow((y-yc)/sigy, 2.0)));
+      double s = DC + A*exp(-0.5*(pow((x-xc)/sigx, 2.0) + pow((y-yc)/sigy, 2.0)));
       return s;
     }
     
   private:
-    double xc,yc,sigx,sigy,A;
+    double xc,yc,sigx,sigy,A, DC;
   };
   
 }
