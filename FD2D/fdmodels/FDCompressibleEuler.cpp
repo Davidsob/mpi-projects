@@ -204,8 +204,12 @@ void FDEuler::advanceSolution(double dt,MPI_Comm comm)
     vector<double> &e = this->data_manager->getData(primary_variables[3]);
     
     double Fx = 0, Fy = 0;
-    double dtdx = dt / this->grid->get_hx();
-    double dtdy = dt / this->grid->get_hy();
+    double hx = this->grid->get_hx();
+    double hy = this->grid->get_hy();
+    double dtdx = dt / hx;
+    double dtdy = dt / hy;
+    double dt2dx = dtdx/hx;
+    double dt2dy = dtdy/hy;
 
     // MacCormack Step 1
     // calculate flux
@@ -226,8 +230,7 @@ void FDEuler::advanceSolution(double dt,MPI_Comm comm)
                                           this->data_manager->getStencil(p));
             }
             
-            // update u
-            /// diffusion term
+            // get flux stencils
             Stencil E0 = this->data_manager->getStencil("E0");
             Stencil E1 = this->data_manager->getStencil("E1");
             Stencil E2 = this->data_manager->getStencil("E2");
@@ -247,10 +250,21 @@ void FDEuler::advanceSolution(double dt,MPI_Comm comm)
             
             
             // MacCormack Step 1
-            rho_s[idx] = rho[idx] - dtdx * (E0.E - E0.O) - dtdy * (F0.N - F0.O);
-            px_s[idx] = px[idx] - dtdx * (E1.E - E1.O) - dtdy * (F1.N - F1.O);
-            py_s[idx] = py[idx] - dtdx * (E2.E - E2.O) - dtdy * (F2.N - F2.O);
-            e_s[idx] = e[idx] - dtdx * (E3.E - E3.O) - dtdy * (F3.N - F3.O);
+            rho_s[idx] = rho[idx] - dtdx * (E0.E - E0.O) - dtdy * (F0.N - F0.O)
+            + dt2dx * this->flux_viscocity[0]*(E0.W - 2.0*E0.O + E0.E)\
+            + dt2dy * this->flux_viscocity[0]*(F0.S - 2.0*F0.O + F0.N);
+            
+            px_s[idx] = px[idx] - dtdx * (E1.E - E1.O) - dtdy * (F1.N - F1.O) + Fx \
+            + 0.5*dt2dx * this->flux_viscocity[1]*(E1.W - 2.0*E1.O + E1.E)\
+            + 0.5*dt2dy * this->flux_viscocity[1]*(F1.S - 2.0*F1.O + F1.N);
+            
+            py_s[idx] = py[idx] - dtdx * (E2.E - E2.O) - dtdy * (F2.N - F2.O) + Fy \
+            + 0.5*dt2dx * this->flux_viscocity[2]*(E2.W - 2.0*E2.O + E2.E)\
+            + 0.5*dt2dy * this->flux_viscocity[2]*(F2.S - 2.0*F2.O + F2.N);
+            
+            e_s[idx] = e[idx] - dtdx * (E3.E - E3.O) - dtdy * (F3.N - F3.O)\
+            + 0.5*dt2dx * this->flux_viscocity[3]*(E3.W - 2.0*E3.O + E3.E)\
+            + 0.5*dt2dy * this->flux_viscocity[3]*(F3.S - 2.0*F3.O + F3.N);
             
         }
     }
@@ -296,9 +310,9 @@ void FDEuler::advanceSolution(double dt,MPI_Comm comm)
             
             // MacCormack Step 1
             rho[idx] = 0.5*((rho[idx] + rho_s[idx]) - dtdx * (E0.O - E0.W) - dtdy * (F0.O - F0.S));
-            px[idx] = 0.5*((px[idx] + px[idx]) - dtdx * (E1.O - E1.W) - dtdy * (F1.O - F1.S));
-            py[idx] = 0.5*((py[idx] + py[idx]) - dtdx * (E2.O - E2.W) - dtdy * (F2.O - F2.S));
-            e[idx] = 0.5*((e[idx] + e[idx]) - dtdx * (E3.O - E3.W) - dtdy * (F3.O - F3.S));
+            px[idx] = 0.5*((px[idx] + px_s[idx]) - dtdx * (E1.O - E1.W) - dtdy * (F1.O - F1.S));
+            py[idx] = 0.5*((py[idx] + py_s[idx]) - dtdx * (E2.O - E2.W) - dtdy * (F2.O - F2.S));
+            e[idx] = 0.5*((e[idx] + e_s[idx]) - dtdx * (E3.O - E3.W) - dtdy * (F3.O - F3.S));
             
         }
     }

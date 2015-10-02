@@ -32,6 +32,7 @@ public:
     virtual void setGamma(double gam){this->gamma = gam;}
     virtual void setGasConstant(double gas){this->R_gas = gas;}
     virtual void setTimeStep(double dt){this->dt = dt;}
+    virtual void setArtificialViscosity(vector<double> eps){this->flux_viscocity = eps;}
     void addICName(const string &var, const string &ic_name){
         this->initial_conditions.insert(pair<string, string>(var, ic_name));
     }
@@ -44,6 +45,8 @@ private:
     /// vecetor of flux variable names
     vector<string> flux_variables;
     
+    /// vector of flux coefficients
+    vector<double> flux_viscocity;
     // constants
     double gamma;
     double R_gas;

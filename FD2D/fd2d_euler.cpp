@@ -47,8 +47,8 @@ int main(int argc, char ** argv)
     int rank, nproc;
     getWorldInfo(MPI_COMM_WORLD,rank,nproc);
     
-    int divx = 30;
-    int divy = 30;
+    int divx = 100;
+    int divy = 100;
     int Nx = divx+1;
     int Ny = divy+1;
     
@@ -100,10 +100,16 @@ int main(int argc, char ** argv)
     // set up model
     // Courant number
     double CFL = 0.05;
-    double t_end = 1.0;
+    double t_end = 0.3;
     double dt = 1e-4;
     double gamma = 7.0/5.0;
     double R_gas = 200.0;
+    double eps_rho = 5e-3;
+    double eps_px = 5e-3;
+    double eps_py = eps_px;
+    double eps_e = 5e-3;
+    size_t write = 100;
+    
     
     FDEuler * model = new FDEuler({"density", "px", "py", "energy"}, 2);
     model->setGrid(grid);
@@ -111,12 +117,12 @@ int main(int argc, char ** argv)
     model->setEndTime(t_end);
     model->setCFL(CFL);
     model->setTimeStep(dt);
-
+    model->setArtificialViscosity({eps_rho, eps_px, eps_py, eps_e});
     
     // set write data info
     model->setOuputFilePath(saveto + "/solutions/");
     model->setFileName("u.dat");
-    model->setWriteEveryNthStep(500);
+    model->setWriteEveryNthStep(write);
     MPI_Barrier(MPI_COMM_WORLD);
     
     // initialize solution vectors
@@ -149,7 +155,7 @@ int main(int argc, char ** argv)
 //    data->setSource("w", w, true);
     
     // set initial condition on velocity
-    GaussianSource * gauss = new GaussianSource(0.5,0.5,0.1,0.1,10.0);
+    GaussianSource * gauss = new GaussianSource(0.5,0.5,0.05,0.05,1.0);
     
     // create map for application of ICs
     model->addICName("density", "ic density");

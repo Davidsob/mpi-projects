@@ -16,8 +16,8 @@ parts = dat(2);
 C = dat(3);
 
 filename = 'solutions/u.dat.';
-fno = 0;
-data = {parts,1};
+fno = files-1;
+data = cell(parts,1);
 for i = 0:parts-1
     file = sprintf('%s%s%0.3d.proc_%d',path,filename,fno,i);
     data{i+1} = textread(file);
@@ -32,12 +32,12 @@ if(movie)
     writer.Quality = 100;
 end
 
-color_by_part = 0;
+color_by_part = 1;
 figure(1)
 
 hndls = {parts,1};
 
-data_idx = 3;
+data_idx = 6;
 
 for i = 1:1:parts
     nr = partition(i,3)+1;
@@ -46,25 +46,25 @@ for i = 1:1:parts
     X = reshape(dat(:,1),nc,nr);
     Y = reshape(dat(:,2),nc,nr);
     Z = reshape(dat(:,data_idx),nc,nr);
-    
     if color_by_part ~= 1
         hndls{i} = surf(X,Y,Z);
     else
         hndls{i} = surf(X,Y,Z,ones(nc,nr)*i);
     end
-    
+    set(hndls{i},'edgealpha',0.1);
+
     hold on;
 end
 
 % daspect([1 1 1]);
-tit = sprintf('2D-Wave: C = %1.2g, t = %1.3f[s]',C,time(1));
+tit = sprintf('2D-Shock: C = %1.2g, t = %1.3f[s]',C,time(1));
 ht = title(tit);
 set(ht,'fontsize',20);
 if(movie)
     frame = getframe;
     writer = addframe(writer,frame);
 end
-frames = 1;
+frames = 1000;
 if(frames == 0), return; end
 
 %% get extents of surface plot
@@ -96,12 +96,12 @@ if(extents(5) == extents(6))
     extents(5) = extents(5)-1;
     extents(6) = extents(6)+1;
 end
-
-axis([0 1 0 1 extents(5:6)]);
-% axis([0 1 0 1 0 1e6]);
+% 
+% axis([0 1 0 1 extents(5:6)]);
+axis([0 1 0 1 -1 1]);
 %% make a movie!
 for i = 2:length(time)
-    pause(0.1);
+    pause(0.05);
     for j = 1:parts
         file = sprintf('%s%s%0.3d.proc_%d',path,filename,i-1,j-1);
         nr = partition(j,3)+1;
